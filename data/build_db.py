@@ -9,7 +9,7 @@
     kanjidic2.xml.gz       EDRDG の KANJIDIC2（現代の画数、読み、常用・人名用の区別）
                            http://www.edrdg.org/kanjidic/kanjidic2.xml.gz
 
-出力: data/build/kanji.sqlite
+出力: KakuNote/Resources/kanji.sqlite（アプリに同梱する。作り直したらコミットする）
 テスト: python3 -m unittest discover -s data/tests
 
 標準ライブラリだけで動く（Python 3.9 以上）。
@@ -344,7 +344,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--kanjidic", type=Path, default=DATA_DIR / "sources" / "kanjidic2.xml.gz")
     parser.add_argument("--overrides", type=Path, default=DATA_DIR / "overrides.csv")
     parser.add_argument("--non-kanji", type=Path, default=DATA_DIR / "non_kanji.csv")
-    parser.add_argument("--out", type=Path, default=DATA_DIR / "build" / "kanji.sqlite")
+    parser.add_argument("--out", type=Path, default=DATA_DIR.parent / "KakuNote" / "Resources" / "kanji.sqlite")
     args = parser.parse_args(argv)
 
     for path in (args.unihan, args.kanjidic, args.overrides, args.non_kanji):

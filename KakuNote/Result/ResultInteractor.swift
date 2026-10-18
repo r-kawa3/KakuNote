@@ -20,26 +20,16 @@ class ResultInteractor: ResultInteractorInput {
     weak var output: ResultInteractorOutput?
     
     func fetchKanjis(withStrokeCount strokeCount: Int) {
-        guard let url = Bundle.main.url(forResource: "strokes", withExtension: "json") else {
-            output?.didFailToFetch(with: NSError(domain: "FileNotFound", code: 404))
-            return
-        }
-        
-        // 実際のデータ処理をバックグラウンドで行う（巨大なJSON対策）
+        // 同梱 DB の初回の読み込みはバックグラウンドで行う
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            do {
-                let data = try Data(contentsOf: url)
-                let allKanjis = try JSONDecoder().decode([String: Int].self, from: data)
-                
-                let filtered = allKanjis.filter { $0.value == strokeCount }
-                                        .map { KanjiModel(kanji: $0.key) }
-                                        .sorted { $0.kanji < $1.kanji }
-                
-                DispatchQueue.main.async {
-                    self?.output?.didFetchKanjis(filtered)
-                }
-            } catch {
-                DispatchQueue.main.async {
+            let result = KanjiData.bundled.map { data in
+                data.nameKanji(withStrokes: strokeCount).map { KanjiModel(kanji: $0) }
+            }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let kanjis):
+                    self?.output?.didFetchKanjis(kanjis)
+                case .failure(let error):
                     self?.output?.didFailToFetch(with: error)
                 }
             }

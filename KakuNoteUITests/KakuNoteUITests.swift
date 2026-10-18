@@ -33,6 +33,23 @@ final class KakuNoteUITests: XCTestCase {
         // https://developer.apple.com/documentation/xcuiautomation
     }
 
+    /// 画数を入れて「実行」すると、同梱 DB からその画数の名前用の字が出る。
+    @MainActor
+    func testSearchByStrokeCountShowsNameKanji() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let field = app.textFields["数字を入力"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("1")
+        app.buttons["実行"].tap()
+
+        XCTAssertTrue(app.staticTexts["一"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["乙"].exists)
+        XCTAssertTrue(app.staticTexts["入力された画数: 1"].exists)
+    }
+
     @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
