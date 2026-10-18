@@ -83,6 +83,7 @@ struct TopView: View {
                 }
             }
             .navigationTitle("探す")
+            .aboutButton()
             .navigationDestination(item: $query) { query in
                 ResultRouter.assembleModules(query: query)
             }

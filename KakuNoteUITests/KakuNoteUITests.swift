@@ -193,6 +193,28 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["lookup.kaku.gaikaku"].label, "14画")
     }
 
+    /// 「探す」「調べる」の右上のボタンから「このアプリについて」を開ける。出典とデータのバージョンが出る。
+    @MainActor
+    func testAboutScreenFromBothTabs() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        for tab in ["探す", "調べる"] {
+            app.tabBars.buttons[tab].tap()
+            let about = app.buttons["about.open"]
+            XCTAssertTrue(about.waitForExistence(timeout: 5), tab)
+            about.tap()
+
+            XCTAssertTrue(app.staticTexts["about.KANJIDIC2.version"].waitForExistence(timeout: 5), tab)
+            XCTAssertEqual(app.staticTexts["about.KANJIDIC2.version"].label, "2026-291")
+            XCTAssertEqual(app.staticTexts["about.Unihan.version"].label, "Unicode 17.0.0")
+            XCTAssertTrue(app.descendants(matching: .any)["CC BY-SA 4.0"].exists)
+
+            app.buttons["about.close"].tap()
+            XCTAssertTrue(about.waitForExistence(timeout: 5), tab)
+        }
+    }
+
     @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.

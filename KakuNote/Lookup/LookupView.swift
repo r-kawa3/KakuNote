@@ -34,6 +34,7 @@ struct LookupView: View {
                 }
             }
             .navigationTitle("調べる")
+            .aboutButton()
             .onChange(of: presenter.sei) { presenter.inputDidChange() }
             .onChange(of: presenter.mei) { presenter.inputDidChange() }
             .onAppear { presenter.viewDidAppear() }
