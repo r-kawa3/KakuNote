@@ -30,7 +30,7 @@ struct LookupView: View {
                             .accessibilityIdentifier("lookup.error")
                     }
                 } else if let result = presenter.result {
-                    resultSections(result)
+                    LookupResultSections(result: result)
                 }
             }
             .navigationTitle("調べる")
@@ -40,8 +40,13 @@ struct LookupView: View {
         }
     }
 
-    @ViewBuilder
-    private func resultSections(_ result: LookupResult) -> some View {
+}
+
+/// 「調べる」の結果（警告・各字の画数・五格）の表示。候補の詳細でも使う。
+struct LookupResultSections: View {
+    let result: LookupResult
+
+    var body: some View {
         if !result.warnings.isEmpty {
             Section {
                 ForEach(Array(result.warnings.enumerated()), id: \.offset) { _, warning in

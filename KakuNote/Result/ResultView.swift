@@ -31,10 +31,14 @@ struct ResultView: View {
                 List {
                     Section {
                         ForEach(Array(presenter.names.enumerated()), id: \.offset) { index, name in
-                            Text(name)
-                                .font(.title2)
-                                .padding(.vertical, 4)
-                                .onAppear { presenter.rowDidAppear(at: index) }
+                            NavigationLink {
+                                ResultRouter.detailView(sei: presenter.sei, mei: name)
+                            } label: {
+                                Text(name)
+                                    .font(.title2)
+                                    .padding(.vertical, 4)
+                            }
+                            .onAppear { presenter.rowDidAppear(at: index) }
                         }
                     } header: {
                         Text("\(total)件")

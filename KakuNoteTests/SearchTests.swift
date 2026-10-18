@@ -25,6 +25,35 @@ final class SearchTests: XCTestCase {
         }
     }
 
+    /// 姓ありのケース（エラーのケースを含む）。
+    func testCommonSeiCases() throws {
+        let cases = try Self.searchCases().filter { ($0["input"] as? [String: Any])?["sei"] is String }
+        XCTAssertFalse(cases.isEmpty)
+        for testCase in cases {
+            try check(testCase)
+        }
+    }
+
+    /// 共通テストケースが、姓なし・姓ありのどちらかで全部確かめられている。
+    func testAllCommonCasesAreCovered() throws {
+        let cases = try Self.searchCases()
+        let covered = cases.filter {
+            let sei = ($0["input"] as? [String: Any])?["sei"]
+            return sei is NSNull || sei is String
+        }
+        XCTAssertEqual(covered.count, cases.count)
+    }
+
+    func testOneCharSeiGaikakuUsesSingleCharRule() throws {
+        // 姓「林」（8 画）・1 文字・外格 20 → 外格 = 0 + 8 + n なので 12 画の字
+        let search = try NameSearch(
+            query: SearchQuery(sei: "林", positions: [.free(.kanji)], conditions: [.gaikaku: [20]]),
+            data: data, school: school
+        )
+        XCTAssertEqual(search.breakdowns.map(\.strokes), [[12]])
+        XCTAssertTrue(search.page(offset: 0, limit: search.total).contains("翔"))
+    }
+
     func testTwoCharsOrder() throws {
         let search = try NameSearch(
             query: SearchQuery(sei: nil, positions: [.free(.kanji), .free(.kanji)], conditions: [.chikaku: [2]]),

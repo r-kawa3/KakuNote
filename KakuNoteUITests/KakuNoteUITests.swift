@@ -42,7 +42,7 @@ final class KakuNoteUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["result.total"].label, "4件")
-        let names = ["一一", "一乙", "乙一", "乙乙"].map { app.staticTexts[$0] }
+        let names = ["一一", "一乙", "乙一", "乙乙"].map { app.buttons[$0] }
         XCTAssertTrue(names.allSatisfy(\.exists))
         // 上から順に並んでいる
         let ys = names.map(\.frame.minY)
@@ -68,14 +68,63 @@ final class KakuNoteUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["result.total"].label, "305,520件")
-        XCTAssertTrue(app.staticTexts["一一一且"].exists)
+        XCTAssertTrue(app.buttons["一一一且"].exists)
 
         // 61 件目（2 ページ目）が出るまでスクロールする
-        let later = app.staticTexts["一一一庁"]
+        let later = app.buttons["一一一庁"]
         for _ in 0..<15 where !later.exists {
             app.swipeUp()
         }
         XCTAssertTrue(later.exists)
+    }
+
+    /// 姓込み検索: 天格が出て、人格・総格の条件を満たす候補が出る。候補を選ぶと五格が出る。
+    @MainActor
+    func testSearchWithSurname() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let sei = app.textFields["search.sei"]
+        XCTAssertTrue(sei.waitForExistence(timeout: 5))
+        sei.tap()
+        sei.typeText("田中\n")
+        let tenkaku = app.staticTexts["search.tenkaku"]
+        XCTAssertTrue(tenkaku.waitForExistence(timeout: 5))
+        XCTAssertEqual(tenkaku.label, "9画")
+
+        app.buttons["2文字"].tap()
+        type(app, "15", into: "search.kaku.jinkaku")
+        type(app, "24", into: "search.kaku.soukaku")
+        let submit = app.buttons["search.submit"]
+        for _ in 0..<5 where !submit.isHittable {
+            app.swipeUp()
+        }
+        submit.tap()
+
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "23,716件")
+        let first = app.buttons["乾不"]
+        XCTAssertTrue(first.exists)
+        first.tap()
+
+        let jinkaku = app.staticTexts["lookup.kaku.jinkaku"]
+        XCTAssertTrue(jinkaku.waitForExistence(timeout: 5))
+        XCTAssertEqual(jinkaku.label, "15画")
+        XCTAssertEqual(app.staticTexts["lookup.kaku.tenkaku"].label, "9画")
+        for _ in 0..<3 where !app.staticTexts["lookup.kaku.soukaku"].exists {
+            app.swipeUp()
+        }
+        XCTAssertEqual(app.staticTexts["lookup.kaku.soukaku"].label, "24画")
+    }
+
+    @MainActor
+    private func type(_ app: XCUIApplication, _ text: String, into identifier: String) {
+        let field = app.textFields[identifier]
+        for _ in 0..<5 where !field.isHittable {
+            app.swipeUp()
+        }
+        field.tap()
+        field.typeText(text + "\n")
     }
 
     @MainActor

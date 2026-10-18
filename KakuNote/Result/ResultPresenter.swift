@@ -24,13 +24,16 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
     var total: Int?
     var isLoading = false
     var errorMessage: String?
+    /// 検索した姓（候補の詳細で使う）。nil なら姓なし
+    let sei: String?
 
     private let interactor: ResultInteractorInput
     private let router: ResultRouterInput
 
-    init(interactor: ResultInteractorInput, router: ResultRouterInput) {
+    init(interactor: ResultInteractorInput, router: ResultRouterInput, sei: String?) {
         self.interactor = interactor
         self.router = router
+        self.sei = sei
     }
 
     // MARK: - View Input
