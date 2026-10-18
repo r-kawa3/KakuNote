@@ -50,6 +50,53 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["入力された画数: 1"].exists)
     }
 
+    /// 「調べる」タブで姓名を入れると、五格が出る。
+    @MainActor
+    func testLookupShowsKaku() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["調べる"].tap()
+
+        let sei = app.textFields["lookup.sei"]
+        XCTAssertTrue(sei.waitForExistence(timeout: 5))
+        sei.tap()
+        sei.typeText("林")
+        let mei = app.textFields["lookup.mei"]
+        mei.tap()
+        mei.typeText("健太\n")
+        app.swipeUp()
+
+        let gaikaku = app.staticTexts["lookup.kaku.gaikaku"]
+        XCTAssertTrue(gaikaku.waitForExistence(timeout: 5))
+        XCTAssertEqual(gaikaku.label, "12画")
+        XCTAssertEqual(app.staticTexts["lookup.kaku.tenkaku"].label, "8画")
+        XCTAssertEqual(app.staticTexts["lookup.kaku.jinkaku"].label, "19画")
+        XCTAssertEqual(app.staticTexts["lookup.kaku.chikaku"].label, "15画")
+        XCTAssertEqual(app.staticTexts["lookup.kaku.soukaku"].label, "23画")
+    }
+
+    /// 繰り返し記号やひらがなを含む姓名でも出る。
+    @MainActor
+    func testLookupWithOdorijiAndHiragana() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["調べる"].tap()
+
+        let sei = app.textFields["lookup.sei"]
+        XCTAssertTrue(sei.waitForExistence(timeout: 5))
+        sei.tap()
+        sei.typeText("佐々木")
+        let mei = app.textFields["lookup.mei"]
+        mei.tap()
+        mei.typeText("さくら\n")
+        app.swipeUp()
+
+        let soukaku = app.staticTexts["lookup.kaku.soukaku"]
+        XCTAssertTrue(soukaku.waitForExistence(timeout: 5))
+        XCTAssertEqual(soukaku.label, "21画")
+        XCTAssertEqual(app.staticTexts["lookup.kaku.gaikaku"].label, "14画")
+    }
+
     @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.

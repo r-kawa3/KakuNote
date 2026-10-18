@@ -11,7 +11,14 @@ import SwiftUI
 struct KakuNoteApp: App {
     var body: some Scene {
         WindowGroup {
-            TopView()
+            TabView {
+                Tab("探す", systemImage: "magnifyingglass") {
+                    TopView()
+                }
+                Tab("調べる", systemImage: "character.book.closed") {
+                    LookupRouter.assembleModules()
+                }
+            }
         }
     }
 }
