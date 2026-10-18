@@ -33,21 +33,68 @@ final class KakuNoteUITests: XCTestCase {
         // https://developer.apple.com/documentation/xcuiautomation
     }
 
-    /// 画数を入れて「実行」すると、同梱 DB からその画数の名前用の字が出る。
+    /// 「探す」で 2 文字・漢字・総画数 2 → 一一、一乙、乙一、乙乙 の順に出る。
     @MainActor
-    func testSearchByStrokeCountShowsNameKanji() throws {
+    func testNameOnlySearchOrder() throws {
         let app = XCUIApplication()
         app.launch()
+        search(app, length: "2文字", total: "2")
 
-        let field = app.textFields["数字を入力"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.tap()
-        field.typeText("1")
-        app.buttons["実行"].tap()
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "4件")
+        let names = ["一一", "一乙", "乙一", "乙乙"].map { app.staticTexts[$0] }
+        XCTAssertTrue(names.allSatisfy(\.exists))
+        // 上から順に並んでいる
+        let ys = names.map(\.frame.minY)
+        XCTAssertEqual(ys, ys.sorted())
+    }
 
-        XCTAssertTrue(app.staticTexts["一"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["乙"].exists)
-        XCTAssertTrue(app.staticTexts["入力された画数: 1"].exists)
+    /// 件数が 0 のときは、その旨が出る。
+    @MainActor
+    func testNameOnlySearchNoResults() throws {
+        let app = XCUIApplication()
+        app.launch()
+        search(app, length: "1文字", total: "100")
+
+        XCTAssertTrue(app.staticTexts["該当する名前がありません"].waitForExistence(timeout: 10))
+    }
+
+    /// 件数の多い検索でも先頭が出て、スクロールすると続き（51 件目以降）が出る。
+    @MainActor
+    func testLargeSearchLoadsMoreOnScroll() throws {
+        let app = XCUIApplication()
+        app.launch()
+        search(app, length: "4文字", total: "8")
+
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "305,520件")
+        XCTAssertTrue(app.staticTexts["一一一且"].exists)
+
+        // 61 件目（2 ページ目）が出るまでスクロールする
+        let later = app.staticTexts["一一一庁"]
+        for _ in 0..<15 where !later.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(later.exists)
+    }
+
+    @MainActor
+    private func search(_ app: XCUIApplication, length: String, total: String) {
+        let lengthButton = app.buttons[length]
+        XCTAssertTrue(lengthButton.waitForExistence(timeout: 5))
+        lengthButton.tap()
+        // 文字数が多いと、総画数の欄は画面の下にあるのでスクロールする
+        let totalField = app.textFields["search.total"]
+        for _ in 0..<5 where !totalField.isHittable {
+            app.swipeUp()
+        }
+        totalField.tap()
+        totalField.typeText(total + "\n")
+        let submit = app.buttons["search.submit"]
+        for _ in 0..<5 where !submit.isHittable {
+            app.swipeUp()
+        }
+        submit.tap()
     }
 
     /// 「調べる」タブで姓名を入れると、五格が出る。

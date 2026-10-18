@@ -10,41 +10,42 @@ import SwiftUI
 struct ResultView: View {
     // Presenterを保持（@Stateでライフサイクルを維持）
     @State var presenter: ResultPresenter
-    let strokeCount: Int
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("検索結果")
-                .font(.title2)
-                .bold()
-            
-            Text("入力された画数: \(strokeCount)")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
+        Group {
             if presenter.isLoading {
                 ProgressView()
-                    .frame(maxHeight: .infinity)
-            } else if presenter.kanjis.isEmpty {
+            } else if let message = presenter.errorMessage {
                 ContentUnavailableView(
-                    "該当する漢字がありません",
-                    systemImage: "magnifyingglass",
-                    description: Text("\(strokeCount)画の漢字は見つかりませんでした。")
+                    "検索できませんでした",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(message)
                 )
-            } else {
-                List(presenter.kanjis) { item in
-                    HStack {
-                        Text(item.kanji)
-                            .font(.title)
-                        Spacer()
+            } else if presenter.total == 0 {
+                ContentUnavailableView(
+                    "該当する名前がありません",
+                    systemImage: "magnifyingglass",
+                    description: Text("条件を変えてみてください。")
+                )
+            } else if let total = presenter.total {
+                List {
+                    Section {
+                        ForEach(Array(presenter.names.enumerated()), id: \.offset) { index, name in
+                            Text(name)
+                                .font(.title2)
+                                .padding(.vertical, 4)
+                                .onAppear { presenter.rowDidAppear(at: index) }
+                        }
+                    } header: {
+                        Text("\(total)件")
+                            .accessibilityIdentifier("result.total")
                     }
-                    .padding(.vertical, 4)
                 }
                 .listStyle(.plain)
+                .accessibilityIdentifier("result.list")
             }
         }
-        .padding()
-        .navigationTitle("結果")
+        .navigationTitle("検索結果")
         .navigationBarTitleDisplayMode(.inline)
         // 画面イベントをPresenterにそのまま丸投げ
         .onAppear {
@@ -52,4 +53,3 @@ struct ResultView: View {
         }
     }
 }
-

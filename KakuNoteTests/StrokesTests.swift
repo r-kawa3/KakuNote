@@ -65,14 +65,6 @@ final class StrokesTests: XCTestCase {
         text.unicodeScalars.map(\.value)
     }
 
-    func testNameKanjiByStrokes() {
-        XCTAssertEqual(data.nameKanji(withStrokes: 1), ["一", "乙"])
-        XCTAssertTrue(data.nameKanji(withStrokes: 0).isEmpty)
-        // 名前に使えない字（澤）は出ない
-        XCTAssertFalse(data.nameKanji(withStrokes: 16).contains("澤"))
-        XCTAssertTrue(data.nameKanji(withStrokes: 12).contains("陽"))
-    }
-
     func testBundledDataMatchesTestCaseVersion() throws {
         let json = try SharedTestCases.load("search.json")
         let version = try XCTUnwrap(json["data_version"] as? [String: String])

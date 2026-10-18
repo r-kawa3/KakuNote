@@ -10,39 +10,72 @@ import Observation
 
 protocol ResultPresenterInput: AnyObject {
     func viewDidAppear()
+    func rowDidAppear(at index: Int)
 }
 
 @Observable // SwiftUIのViewが検知できるようにする
 class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
-    
+
+    /// 1 回に作る候補の数
+    static let pageSize = 50
+
     // Viewが観察するプロパティ（@Observableなので自動で検知される）
-    var kanjis: [KanjiModel] = []
+    var names: [String] = []
+    var total: Int?
     var isLoading = false
-    
+    var errorMessage: String?
+
     private let interactor: ResultInteractorInput
     private let router: ResultRouterInput
-    private let strokeCount: Int
-    
-    init(interactor: ResultInteractorInput, router: ResultRouterInput, strokeCount: Int) {
+
+    init(interactor: ResultInteractorInput, router: ResultRouterInput) {
         self.interactor = interactor
         self.router = router
-        self.strokeCount = strokeCount
     }
-    
+
     // MARK: - View Input
     func viewDidAppear() {
+        guard total == nil && !isLoading else { return }
         isLoading = true
-        interactor.fetchKanjis(withStrokeCount: strokeCount)
+        interactor.startSearch()
     }
-    
+
+    /// 一覧の最後の行が表示されたら、続きを作る。
+    func rowDidAppear(at index: Int) {
+        guard let total, index == names.count - 1, names.count < total else { return }
+        interactor.loadPage(offset: names.count, limit: Self.pageSize)
+    }
+
     // MARK: - Interactor Output
-    func didFetchKanjis(_ kanjis: [KanjiModel]) {
-        self.kanjis = kanjis
-        self.isLoading = false
+    func didStartSearch(total: Int) {
+        self.total = total
+        isLoading = false
+        interactor.loadPage(offset: 0, limit: Self.pageSize)
     }
-    
-    func didFailToFetch(with error: Error) {
-        self.isLoading = false
-        print("エラーが発生しました: \(error)")
+
+    func didLoadPage(_ names: [String], offset: Int) {
+        guard offset == self.names.count else { return }
+        self.names.append(contentsOf: names)
+    }
+
+    func didFailToSearch(with error: Error) {
+        isLoading = false
+        errorMessage = Self.message(for: error)
+    }
+
+    // MARK: - 表示用の文言
+    static func message(for error: Error) -> String {
+        switch error as? SearchError {
+        case .unknownStrokes(let chars):
+            return "画数がわからない字があります: " + chars.map { "「\($0)」" }.joined(separator: "、")
+        case .fixedNotSingleChar(let position):
+            return "\(position)文字目に固定する字は 1 文字にしてください"
+        case .invalidInput:
+            return "入力に使えない文字（途中の空白など）があります"
+        case .invalidLength, .noCondition, .invalidCondition:
+            return "検索の条件が正しくありません"
+        case nil:
+            return "漢字データを読み込めませんでした"
+        }
     }
 }

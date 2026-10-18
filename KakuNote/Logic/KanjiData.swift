@@ -108,15 +108,6 @@ nonisolated struct KanjiData: Sendable {
         if !unknown.isEmpty { throw UnknownStrokeError(chars: unknown) }
         return infos.map { $0!.strokes }
     }
-
-    /// 指定した画数の、名前に使える漢字（常用漢字・人名用漢字）。コードポイントの小さい順。
-    func nameKanji(withStrokes strokes: Int) -> [String] {
-        chars
-            .filter { $0.value.script == .kanji && $0.value.nameOK && $0.value.strokes == strokes && $0.key != "々" }
-            .keys
-            .sorted { $0.value < $1.value }
-            .map { String($0) }
-    }
 }
 
 // MARK: - SQLite（読み取り専用）

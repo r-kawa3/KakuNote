@@ -12,21 +12,20 @@ protocol ResultRouterInput: AnyObject {
 }
 
 class ResultRouter: ResultRouterInput {
-    
+
     // 依存関係を組み立てて、Viewを返すクラスメソッド（ビルダー）
-    static func assembleModules(strokeCount: Int) -> some View {
-        let interactor = ResultInteractor()
+    static func assembleModules(query: SearchQuery) -> some View {
+        let interactor = ResultInteractor(query: query)
         let router = ResultRouter()
-        
+
         let presenter = ResultPresenter(
             interactor: interactor,
-            router: router,
-            strokeCount: strokeCount
+            router: router
         )
-        
+
         interactor.output = presenter
-        
+
         // PresenterをViewに注入して返す
-        return ResultView(presenter: presenter, strokeCount: strokeCount)
+        return ResultView(presenter: presenter)
     }
 }

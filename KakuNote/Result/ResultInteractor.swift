@@ -8,31 +8,51 @@
 import Foundation
 
 protocol ResultInteractorInput: AnyObject {
-    func fetchKanjis(withStrokeCount strokeCount: Int)
+    func startSearch()
+    func loadPage(offset: Int, limit: Int)
 }
 
 protocol ResultInteractorOutput: AnyObject {
-    func didFetchKanjis(_ kanjis: [KanjiModel])
-    func didFailToFetch(with error: Error)
+    func didStartSearch(total: Int)
+    func didLoadPage(_ names: [String], offset: Int)
+    func didFailToSearch(with error: Error)
 }
 
 class ResultInteractor: ResultInteractorInput {
     weak var output: ResultInteractorOutput?
-    
-    func fetchKanjis(withStrokeCount strokeCount: Int) {
-        // 同梱 DB の初回の読み込みはバックグラウンドで行う
+
+    private let query: SearchQuery
+    private let school: any KakuSchool
+    private var search: NameSearch?
+
+    init(query: SearchQuery, school: any KakuSchool = ShinjitaiSchool()) {
+        self.query = query
+        self.school = school
+    }
+
+    func startSearch() {
+        let query = query
+        let school = school
+        // DB の読み込みと内訳の列挙はバックグラウンドで行う（候補そのものはまだ作らない）
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = KanjiData.bundled.map { data in
-                data.nameKanji(withStrokes: strokeCount).map { KanjiModel(kanji: $0) }
+            let result = Result {
+                try NameSearch(query: query, data: KanjiData.bundled.get(), school: school)
             }
             DispatchQueue.main.async {
                 switch result {
-                case .success(let kanjis):
-                    self?.output?.didFetchKanjis(kanjis)
+                case .success(let search):
+                    self?.search = search
+                    self?.output?.didStartSearch(total: search.total)
                 case .failure(let error):
-                    self?.output?.didFailToFetch(with: error)
+                    self?.output?.didFailToSearch(with: error)
                 }
             }
         }
+    }
+
+    func loadPage(offset: Int, limit: Int) {
+        // 1 ページ分の候補を作るのは軽いので、その場で行う
+        guard let search else { return }
+        output?.didLoadPage(search.page(offset: offset, limit: limit), offset: offset)
     }
 }
