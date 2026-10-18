@@ -77,6 +77,8 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
             return "\(position)文字目に固定する字は 1 文字にしてください"
         case .invalidInput:
             return "入力に使えない文字（途中の空白など）があります"
+        case .tooManyResults:
+            return "候補が多すぎます。総画数を絞るか、文字を固定してください"
         case .invalidLength, .noCondition, .invalidCondition:
             return "検索の条件が正しくありません"
         case nil:

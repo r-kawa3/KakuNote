@@ -38,7 +38,7 @@ final class KakuNoteUITests: XCTestCase {
     func testNameOnlySearchOrder() throws {
         let app = XCUIApplication()
         app.launch()
-        search(app, length: "2文字", total: "2")
+        search(app, length: 2, total: "2")
 
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["result.total"].label, "4件")
@@ -54,9 +54,35 @@ final class KakuNoteUITests: XCTestCase {
     func testNameOnlySearchNoResults() throws {
         let app = XCUIApplication()
         app.launch()
-        search(app, length: "1文字", total: "100")
+        search(app, length: 1, total: "100")
 
         XCTAssertTrue(app.staticTexts["該当する名前がありません"].waitForExistence(timeout: 10))
+    }
+
+    /// 文字数のステッパーは 1〜6 の間だけ動く。6 文字の検索もできる。
+    @MainActor
+    func testLengthStepperRangeAndSixChars() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let value = app.staticTexts["search.length.value"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        XCTAssertEqual(value.label, "2文字")
+
+        app.buttons["search.length.minus"].tap()
+        XCTAssertEqual(value.label, "1文字")
+        XCTAssertFalse(app.buttons["search.length.minus"].isEnabled)
+
+        for _ in 0..<7 {
+            app.buttons["search.length.plus"].tap()
+        }
+        XCTAssertEqual(value.label, "6文字")
+        XCTAssertFalse(app.buttons["search.length.plus"].isEnabled)
+
+        // 6 文字・総画数 6 → 一一一一一一 から 64 件
+        search(app, length: 6, total: "6")
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "64件")
+        XCTAssertTrue(app.buttons["一一一一一一"].exists)
     }
 
     /// 件数の多い検索でも先頭が出て、スクロールすると続き（51 件目以降）が出る。
@@ -64,7 +90,7 @@ final class KakuNoteUITests: XCTestCase {
     func testLargeSearchLoadsMoreOnScroll() throws {
         let app = XCUIApplication()
         app.launch()
-        search(app, length: "4文字", total: "8")
+        search(app, length: 4, total: "8")
 
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["result.total"].label, "305,520件")
@@ -92,7 +118,7 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(tenkaku.waitForExistence(timeout: 5))
         XCTAssertEqual(tenkaku.label, "9画")
 
-        app.buttons["2文字"].tap()
+        setLength(app, 2)
         type(app, "15", into: "search.kaku.jinkaku")
         type(app, "24", into: "search.kaku.soukaku")
         let submit = app.buttons["search.submit"]
@@ -135,7 +161,7 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(sei.waitForExistence(timeout: 5))
         sei.tap()
         sei.typeText("田中\n")
-        app.buttons["2文字"].tap()
+        setLength(app, 2)
         type(app, "15", into: "search.kaku.jinkaku")
         type(app, "24", into: "search.kaku.soukaku")
         let submit = app.buttons["search.submit"]
@@ -180,11 +206,21 @@ final class KakuNoteUITests: XCTestCase {
         field.typeText(text + "\n")
     }
 
+    /// 文字数のステッパーで、名の文字数を合わせる。
     @MainActor
-    private func search(_ app: XCUIApplication, length: String, total: String) {
-        let lengthButton = app.buttons[length]
-        XCTAssertTrue(lengthButton.waitForExistence(timeout: 5))
-        lengthButton.tap()
+    private func setLength(_ app: XCUIApplication, _ length: Int) {
+        let value = app.staticTexts["search.length.value"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        for _ in 0..<6 where value.label != "\(length)文字" {
+            let current = Int(value.label.replacingOccurrences(of: "文字", with: "")) ?? length
+            app.buttons[current < length ? "search.length.plus" : "search.length.minus"].tap()
+        }
+        XCTAssertEqual(value.label, "\(length)文字")
+    }
+
+    @MainActor
+    private func search(_ app: XCUIApplication, length: Int, total: String) {
+        setLength(app, length)
         // 文字数が多いと、総画数の欄は画面の下にあるのでスクロールする
         let totalField = app.textFields["search.total"]
         for _ in 0..<5 where !totalField.isHittable {

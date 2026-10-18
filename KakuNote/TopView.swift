@@ -11,7 +11,7 @@ import SwiftUI
 struct TopView: View {
     @State private var seiText = ""
     @State private var length = 2
-    @State private var positions: [PositionInput] = Array(repeating: PositionInput(), count: 4)
+    @State private var positions: [PositionInput] = Array(repeating: PositionInput(), count: NameSearch.maxLength)
     /// 格ごとの条件の入力。姓なしのときは地格の欄を「総画数」として使う
     @State private var conditionTexts: [KakuKind: String] = [:]
     @State private var query: SearchQuery?
@@ -41,11 +41,9 @@ struct TopView: View {
                 }
 
                 Section {
-                    Picker("名の文字数", selection: $length) {
-                        ForEach(1...4, id: \.self) { Text("\($0)文字").tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("search.length")
+                    LengthStepper(length: $length, range: 1...NameSearch.maxLength)
+                } header: {
+                    Text("名の文字数")
                 }
 
                 ForEach(0..<length, id: \.self) { index in
@@ -166,6 +164,44 @@ struct TopView: View {
             .split(whereSeparator: { ",、， ".contains($0) })
             .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
             .filter { $0 > 0 }
+    }
+}
+
+/// 名の文字数の「− n文字 +」。範囲の外には動かない。
+private struct LengthStepper: View {
+    @Binding var length: Int
+    let range: ClosedRange<Int>
+
+    var body: some View {
+        HStack {
+            Button {
+                length = max(range.lowerBound, length - 1)
+            } label: {
+                Image(systemName: "minus")
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(length <= range.lowerBound)
+            .accessibilityLabel("文字数を減らす")
+            .accessibilityIdentifier("search.length.minus")
+
+            Spacer()
+            Text("\(length)文字")
+                .font(.title2)
+                .monospacedDigit()
+                .accessibilityIdentifier("search.length.value")
+            Spacer()
+
+            Button {
+                length = min(range.upperBound, length + 1)
+            } label: {
+                Image(systemName: "plus")
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(length >= range.upperBound)
+            .accessibilityLabel("文字数を増やす")
+            .accessibilityIdentifier("search.length.plus")
+        }
+        .buttonStyle(.borderless)
     }
 }
 

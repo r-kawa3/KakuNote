@@ -15,6 +15,9 @@ nonisolated struct Kaku: Equatable, Sendable {
 }
 
 /// 流派。五格の計算方法を入れ替えられるようにする（最初の版は新字体式だけ）。
+///
+/// 約束: 姓と名の文字数を決めたとき、各格は名の各位置の画数の 1 次式であること
+/// （検索の打ち切りが、この性質を使って格の取りうる範囲を求める）。
 nonisolated protocol KakuSchool: Sendable {
     /// 姓と名の各字の画数から五格を求める。sei・mei はどちらも 1 文字以上。
     func kaku(sei: [Int], mei: [Int]) -> Kaku

@@ -58,7 +58,7 @@ nonisolated struct SearchQuery: Hashable, Codable, Sendable {
 }
 
 nonisolated enum SearchError: Error, Equatable {
-    /// 文字数が 1〜4 でない
+    /// 文字数が 1〜6 でない
     case invalidLength
     /// 格の条件がない、または値が空
     case noCondition
@@ -70,6 +70,8 @@ nonisolated enum SearchError: Error, Equatable {
     case fixedNotSingleChar(position: Int)
     /// 画数がわからない字がある
     case unknownStrokes([String])
+    /// 候補の総数が NameSearch.maxTotal を超える（条件が広すぎる）
+    case tooManyResults
 }
 
 /// 名前の候補の検索（仕様書 search.md）。候補は全部を作らず、page で必要な範囲だけを作る。
@@ -81,14 +83,32 @@ nonisolated struct NameSearch: Sendable {
         let count: Int
     }
 
-    let breakdowns: [Breakdown]
+    /// 名の文字数の上限
+    static let maxLength = 6
+    /// 候補の総数の上限（2^53 - 1）。JSON や多くの言語で整数を正確に扱える範囲に合わせる
+    static let maxTotal = 9_007_199_254_740_991
+
     let total: Int
+    /// 名の文字数
+    let length: Int
+    /// 条件を満たす内訳の画数を 1 本の配列に並べたもの（内訳ごとに length 個ずつ）。
+    /// 内訳は 10 万を超えることがあるので、内訳ごとに配列を作らない
+    private let breakdownStrokes: [Int]
+    /// 内訳ごとの候補の数
+    private let breakdownCounts: [Int]
+
+    /// 条件を満たす内訳（辞書式の小さい順）。テストや表示で使う
+    var breakdowns: [Breakdown] {
+        breakdownCounts.indices.map { i in
+            Breakdown(strokes: Array(breakdownStrokes[(i * length)..<((i + 1) * length)]), count: breakdownCounts[i])
+        }
+    }
 
     /// 位置ごと: 画数 → その画数の候補の字（仕様の順番）
     private let candidates: [[Int: [String]]]
 
     init(query: SearchQuery, data: KanjiData, school: any KakuSchool) throws {
-        guard (1...4).contains(query.positions.count) else { throw SearchError.invalidLength }
+        guard (1...Self.maxLength).contains(query.positions.count) else { throw SearchError.invalidLength }
         guard !query.conditions.isEmpty, query.conditions.values.allSatisfy({ !$0.isEmpty }) else {
             throw SearchError.noCondition
         }
@@ -123,27 +143,50 @@ nonisolated struct NameSearch: Sendable {
         }
         self.candidates = candidates
 
-        // 条件を満たす内訳を、辞書式の小さい順に求める
+        // 条件を満たす内訳を、辞書式の小さい順に求める。
+        // 条件を満たせないとわかった途中の組み合わせは打ち切る（仕様書 search.md「内訳の列挙の打ち切り」）
         let strokeValues = candidates.map { $0.keys.sorted() }
-        var breakdowns: [Breakdown] = []
-        var current: [Int] = []
-        func visit(_ index: Int) {
-            if index == strokeValues.count {
-                if Self.matches(mei: current, sei: seiStrokes, conditions: query.conditions, school: school) {
-                    let count = current.enumerated().reduce(1) { $0 * candidates[$1.offset][$1.element]!.count }
-                    breakdowns.append(Breakdown(strokes: current, count: count))
+        let counts = zip(candidates, strokeValues).map { group, values in values.map { group[$0]!.count } }
+        let length = strokeValues.count
+        var breakdownStrokes: [Int] = []
+        var breakdownCounts: [Int] = []
+        var total = 0
+        if strokeValues.allSatisfy({ !$0.isEmpty }) {
+            let bounds = ConditionBounds(
+                kakuValues: { Self.kakuValues(mei: $0, sei: seiStrokes, school: school) },
+                strokeValues: strokeValues,
+                conditions: query.conditions
+            )
+            // 深さごとの「途中までの格の値の増え方」。全部の位置を決めると、各格の値そのものになる
+            var partials = [[Int]](repeating: [Int](repeating: 0, count: bounds.itemCount), count: length + 1)
+            var current = [Int](repeating: 0, count: length)
+            func visit(_ index: Int, _ count: Int) throws {
+                if index == length {
+                    // 内訳 1 つの件数だけで上限を超える場合も、ここで止める
+                    guard count <= Self.maxTotal else { throw SearchError.tooManyResults }
+                    breakdownStrokes.append(contentsOf: current)
+                    breakdownCounts.append(count)
+                    // 上限を超えたら、残りをたどらずにすぐやめる
+                    total += count
+                    guard total <= Self.maxTotal else { throw SearchError.tooManyResults }
+                    return
                 }
-                return
+                let partial = partials[index]
+                for (k, value) in strokeValues[index].enumerated() {
+                    guard bounds.extend(partial, at: index, with: value, into: &partials[index + 1]) else {
+                        continue
+                    }
+                    current[index] = value
+                    let (product, overflow) = count.multipliedReportingOverflow(by: counts[index][k])
+                    try visit(index + 1, overflow ? Self.maxTotal + 1 : min(product, Self.maxTotal + 1))
+                }
             }
-            for value in strokeValues[index] {
-                current.append(value)
-                visit(index + 1)
-                current.removeLast()
-            }
+            try visit(0, 1)
         }
-        visit(0)
-        self.breakdowns = breakdowns
-        self.total = breakdowns.reduce(0) { $0 + $1.count }
+        self.length = length
+        self.breakdownStrokes = breakdownStrokes
+        self.breakdownCounts = breakdownCounts
+        self.total = total
     }
 
     /// 先頭から offset 件目（0 始まり）から、最大 limit 件の候補を返す。
@@ -151,13 +194,13 @@ nonisolated struct NameSearch: Sendable {
         guard offset >= 0, limit > 0 else { return [] }
         var result: [String] = []
         var index = offset
-        for breakdown in breakdowns {
-            if index >= breakdown.count {
-                index -= breakdown.count
+        for (i, count) in breakdownCounts.enumerated() {
+            if index >= count {
+                index -= count
                 continue
             }
-            let lists = breakdown.strokes.enumerated().map { candidates[$0.offset][$0.element]! }
-            while index < breakdown.count && result.count < limit {
+            let lists = (0..<length).map { candidates[$0][breakdownStrokes[i * length + $0]]! }
+            while index < count && result.count < limit {
                 result.append(Self.combination(lists, at: index))
                 index += 1
             }
@@ -169,12 +212,75 @@ nonisolated struct NameSearch: Sendable {
 
     // MARK: - 内部
 
-    private static func matches(mei: [Int], sei: [Int]?, conditions: [KakuKind: Set<Int>], school: any KakuSchool) -> Bool {
+    /// 名の各位置の画数から、条件にできる格の値を求める。姓なしなら地格（総画数）だけ。
+    private static func kakuValues(mei: [Int], sei: [Int]?, school: any KakuSchool) -> [KakuKind: Int] {
         guard let sei else {
-            return conditions[.chikaku]?.contains(school.nameOnlyTotal(mei: mei)) ?? false
+            return [.chikaku: school.nameOnlyTotal(mei: mei)]
         }
         let kaku = school.kaku(sei: sei, mei: mei)
-        return conditions.allSatisfy { $0.value.contains(kaku.value(of: $0.key)) }
+        return Dictionary(uniqueKeysWithValues: KakuKind.allCases.map { ($0, kaku.value(of: $0)) })
+    }
+
+    /// 打ち切りの判定。姓と文字数を決めると、各格は名の各位置の画数の 1 次式になる（KakuSchool の約束）。
+    /// すべての位置が最小の画数のときの値と、位置ごとの係数（画数を 1 増やしたときの変化）を求めておき、
+    /// 決めていない位置の最小・最大から、各格が取りうる範囲を出す。
+    /// 全部の位置を決めると範囲は 1 点になるので、最後の判定はそのまま「条件を満たすか」になる。
+    private struct ConditionBounds {
+        struct Item {
+            let base: Int
+            let coefficients: [Int]
+            /// suffixLow[i]・suffixHigh[i]: 位置 i 以降を自由に選んだときの、値の増え方の最小・最大
+            let suffixLow: [Int]
+            let suffixHigh: [Int]
+            let allowed: [Int]
+        }
+
+        let mins: [Int]
+        let items: [Item]
+        var itemCount: Int { items.count }
+
+        init(kakuValues: ([Int]) -> [KakuKind: Int], strokeValues: [[Int]], conditions: [KakuKind: Set<Int>]) {
+            let mins = strokeValues.map { $0.first! }
+            let maxs = strokeValues.map { $0.last! }
+            self.mins = mins
+            let base = kakuValues(mins)
+            items = conditions.sorted { $0.key.rawValue < $1.key.rawValue }.map { kind, allowed in
+                let coefficients = (0..<mins.count).map { index -> Int in
+                    var bumped = mins
+                    bumped[index] += 1
+                    return kakuValues(bumped)[kind]! - base[kind]!
+                }
+                var suffixLow = [Int](repeating: 0, count: mins.count + 1)
+                var suffixHigh = [Int](repeating: 0, count: mins.count + 1)
+                for index in stride(from: mins.count - 1, through: 0, by: -1) {
+                    let span = coefficients[index] * (maxs[index] - mins[index])
+                    suffixLow[index] = suffixLow[index + 1] + min(0, span)
+                    suffixHigh[index] = suffixHigh[index + 1] + max(0, span)
+                }
+                return Item(
+                    base: base[kind]!, coefficients: coefficients,
+                    suffixLow: suffixLow, suffixHigh: suffixHigh, allowed: allowed.sorted()
+                )
+            }
+        }
+
+        /// 位置 index の画数を value にしたときの途中の値を next に書き、条件を満たす見込みがあれば true。
+        func extend(_ partial: [Int], at index: Int, with value: Int, into next: inout [Int]) -> Bool {
+            for (i, item) in items.enumerated() {
+                let sum = partial[i] + item.coefficients[index] * (value - mins[index])
+                next[i] = sum
+                let low = item.base + sum + item.suffixLow[index + 1]
+                let high = item.base + sum + item.suffixHigh[index + 1]
+                // allowed は小さい順なので、low 以上の最初の値が high 以下かを二分探索で調べる
+                var lower = 0, upper = item.allowed.count
+                while lower < upper {
+                    let middle = (lower + upper) / 2
+                    if item.allowed[middle] < low { lower = middle + 1 } else { upper = middle }
+                }
+                if lower == item.allowed.count || item.allowed[lower] > high { return false }
+            }
+            return true
+        }
     }
 
     /// 位置 1 がいちばんゆっくり変わる順番で、n 番目（0 始まり）の組み合わせ。

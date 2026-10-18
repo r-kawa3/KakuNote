@@ -800,6 +800,526 @@
       "expected": {
         "error": "unknown_stroke"
       }
+    },
+    {
+      "id": "six_chars_all_one_stroke",
+      "description": "姓なし・6 文字・漢字・総画数 6。全部の位置が 1 画（一・乙）なので 2^6 = 64 件。一一一一一一 から 乙乙乙乙乙乙 まで",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            6
+          ]
+        }
+      },
+      "expected": {
+        "total": 64,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "count": 64
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 3,
+            "names": [
+              "一一一一一一",
+              "一一一一一乙",
+              "一一一一乙一"
+            ]
+          },
+          {
+            "offset": 61,
+            "limit": 3,
+            "names": [
+              "乙乙乙乙一乙",
+              "乙乙乙乙乙一",
+              "乙乙乙乙乙乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "five_chars_small",
+      "description": "姓なし・5 文字・漢字・総画数 6。1 か所だけ 2 画（14 字）で、ほかは 1 画（一・乙）。5 × 14 × 2^4 = 1120 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            6
+          ]
+        }
+      },
+      "expected": {
+        "total": 1120,
+        "breakdown_count": 5,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              2
+            ],
+            "count": 224
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              2,
+              1
+            ],
+            "count": 224
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              2,
+              1,
+              1
+            ],
+            "count": 224
+          },
+          {
+            "strokes": [
+              1,
+              2,
+              1,
+              1,
+              1
+            ],
+            "count": 224
+          },
+          {
+            "strokes": [
+              2,
+              1,
+              1,
+              1,
+              1
+            ],
+            "count": 224
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 5,
+            "names": [
+              "一一一一丁",
+              "一一一一七",
+              "一一一一乃",
+              "一一一一九",
+              "一一一一了"
+            ]
+          },
+          {
+            "offset": 224,
+            "limit": 3,
+            "names": [
+              "一一一丁一",
+              "一一一丁乙",
+              "一一一七一"
+            ]
+          },
+          {
+            "offset": 1117,
+            "limit": 3,
+            "names": [
+              "又乙乙一乙",
+              "又乙乙乙一",
+              "又乙乙乙乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "six_chars_large",
+      "description": "姓なし・6 文字・漢字・総画数 30。件数が大きい。打ち切りがないと内訳の列挙に時間がかかる",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            30
+          ]
+        }
+      },
+      "expected": {
+        "total": 8885665645558037,
+        "breakdown_count": 118755,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              25
+            ],
+            "count": 32
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              2,
+              24
+            ],
+            "count": 1344
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              3,
+              23
+            ],
+            "count": 4256
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              4,
+              22
+            ],
+            "count": 17248
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              1,
+              5,
+              21
+            ],
+            "count": 28672
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 5,
+            "names": [
+              "一一一一一廳",
+              "一一一一乙廳",
+              "一一一乙一廳",
+              "一一一乙乙廳",
+              "一一乙一一廳"
+            ]
+          },
+          {
+            "offset": 1000000,
+            "limit": 5,
+            "names": [
+              "一乙一一晄窺",
+              "一乙一一晄築",
+              "一乙一一晄篤",
+              "一乙一一晄糖",
+              "一乙一一晄緯"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "six_chars_with_sei",
+      "description": "姓「田中」・6 文字・1 文字目は「陽」に固定・ほかは漢字・人格 16 かつ外格 20",
+      "input": {
+        "sei": "田中",
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "陽"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "jinkaku": [
+            16
+          ],
+          "gaikaku": [
+            20
+          ]
+        }
+      },
+      "expected": {
+        "total": 7833359648,
+        "breakdown_count": 1001,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              12,
+              1,
+              1,
+              1,
+              1,
+              11
+            ],
+            "count": 4928
+          },
+          {
+            "strokes": [
+              12,
+              1,
+              1,
+              1,
+              2,
+              10
+            ],
+            "count": 33040
+          },
+          {
+            "strokes": [
+              12,
+              1,
+              1,
+              1,
+              3,
+              9
+            ],
+            "count": 77520
+          },
+          {
+            "strokes": [
+              12,
+              1,
+              1,
+              1,
+              4,
+              8
+            ],
+            "count": 158312
+          },
+          {
+            "strokes": [
+              12,
+              1,
+              1,
+              1,
+              5,
+              7
+            ],
+            "count": 172928
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 5,
+            "names": [
+              "陽一一一一乾",
+              "陽一一一一亀",
+              "陽一一一一倦",
+              "陽一一一一偏",
+              "陽一一一一停"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "error_too_many",
+      "description": "姓なし・6 文字・種類は any・総画数 30。総数が 2^53 - 1 を超えるので、条件が広すぎるエラー",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "any"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            30
+          ]
+        }
+      },
+      "expected": {
+        "error": "too_many"
+      }
+    },
+    {
+      "id": "error_seven_chars",
+      "description": "名は 6 文字まで",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            7
+          ]
+        }
+      },
+      "expected": {
+        "error": "invalid_condition"
+      }
     }
   ]
 }

@@ -87,6 +87,38 @@ final class SearchTests: XCTestCase {
         XCTAssertLessThan(Date().timeIntervalSince(start), 2.0)
     }
 
+    func testSixCharsLargeSearchIsFast() throws {
+        // 打ち切りがないと、約 3 億通りの内訳をたどってしまう。
+        // 最適化したビルド（アプリの配布用）では約 0.07 秒（2026-10-19 に Mac で計測）。
+        // テストは最適化なしのデバッグビルドで動くので、しきい値は余裕を持たせる
+        let query = SearchQuery(sei: nil, positions: Array(repeating: .free(.kanji), count: 6), conditions: [.chikaku: [30]])
+        let start = Date()
+        let search = try NameSearch(query: query, data: data, school: school)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 3.0)
+        XCTAssertEqual(search.page(offset: 0, limit: 1), ["一一一一一廳"])
+    }
+
+    func testTooManyResultsStopsEarly() {
+        // 総画数 6〜200 のどれでもよい 6 文字（種類は any）は、総数が上限を超える
+        let query = SearchQuery(
+            sei: nil, positions: Array(repeating: .free(.any), count: 6), conditions: [.chikaku: Set(6...200)]
+        )
+        let start = Date()
+        XCTAssertThrowsError(try NameSearch(query: query, data: data, school: school)) { error in
+            XCTAssertEqual(error as? SearchError, .tooManyResults)
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(start), 2.0)
+    }
+
+    func testLengthLimits() {
+        for length in [0, 7] {
+            let query = SearchQuery(sei: nil, positions: Array(repeating: .free(.kanji), count: length), conditions: [.chikaku: [7]])
+            XCTAssertThrowsError(try NameSearch(query: query, data: data, school: school)) { error in
+                XCTAssertEqual(error as? SearchError, .invalidLength)
+            }
+        }
+    }
+
     func testFixedCharMustBeSingle() {
         let query = SearchQuery(sei: nil, positions: [.fixed("陽菜")], conditions: [.chikaku: [23]])
         XCTAssertThrowsError(try NameSearch(query: query, data: data, school: school)) { error in
@@ -151,6 +183,7 @@ final class SearchTests: XCTestCase {
         switch error as? SearchError {
         case .invalidInput, .fixedNotSingleChar: return "invalid_input"
         case .unknownStrokes: return "unknown_stroke"
+        case .tooManyResults: return "too_many"
         case .invalidLength, .noCondition, .invalidCondition: return "invalid_condition"
         case nil: return "other: \(error)"
         }
