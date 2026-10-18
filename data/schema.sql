@@ -71,6 +71,20 @@ CREATE TABLE variant (
     PRIMARY KEY (char, variant)
 );
 
+-- 漢字以外で名前に使える字（ひらがな・カタカナ・長音記号・繰り返し記号）の画数。
+-- non_kanji.csv から読み込む。
+CREATE TABLE non_kanji (
+    char       TEXT    PRIMARY KEY,
+    -- 'hiragana', 'katakana', 'kanji'（「々」は漢字の位置に置く）
+    script     TEXT    NOT NULL CHECK (script IN ('hiragana', 'katakana', 'kanji')),
+    strokes    INTEGER NOT NULL,
+    -- 名前の 1 文字目に置けるなら 1
+    initial_ok INTEGER NOT NULL CHECK (initial_ok IN (0, 1)),
+    -- 「探す」で自動の候補に入れるなら 1（固定する文字としてはいつでも使える）
+    auto_ok    INTEGER NOT NULL CHECK (auto_ok IN (0, 1)),
+    note       TEXT
+);
+
 -- 流派ごとの画数の補正。overrides.csv から読み込む。
 CREATE TABLE override (
     school  TEXT    NOT NULL,

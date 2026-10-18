@@ -1,0 +1,805 @@
+{
+  "description": "仕様書 search.md のテストケース。参照実装で作ったもの（小さい例は手で確かめた）。",
+  "school": "shinjitai",
+  "data_version": {
+    "unicode_version": "17.0.0",
+    "kanjidic2_database_version": "2026-291"
+  },
+  "cases": [
+    {
+      "id": "name_only_one_char_kanji",
+      "description": "姓なし・1 文字・漢字・総画数 1。1 画の名前用の漢字は 一 と 乙 だけ",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            1
+          ]
+        }
+      },
+      "expected": {
+        "total": 2,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1
+            ],
+            "count": 2
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一",
+              "乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "name_only_two_chars_order",
+      "description": "姓なし・2 文字・漢字・総画数 2。仕様書 search.md の例。位置 1 がいちばんゆっくり変わる",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2
+          ]
+        }
+      },
+      "expected": {
+        "total": 4,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1
+            ],
+            "count": 4
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一一",
+              "一乙",
+              "乙一",
+              "乙乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "any_script_first_position",
+      "description": "姓なし・1 文字・種類は any・総画数 1。漢字 → ひらがな → カタカナの順。1 文字目に置けない っ ゝ ヽ ー は出ない",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "any"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            1
+          ]
+        }
+      },
+      "expected": {
+        "total": 11,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1
+            ],
+            "count": 11
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 20,
+            "names": [
+              "一",
+              "乙",
+              "く",
+              "し",
+              "つ",
+              "の",
+              "へ",
+              "ノ",
+              "フ",
+              "ヘ",
+              "レ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "katakana_long_vowel_only_second",
+      "description": "姓なし・2 文字・カタカナ・総画数 2。ー は 2 文字目にだけ出る",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "katakana"
+          },
+          {
+            "kind": "free",
+            "script": "katakana"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2
+          ]
+        }
+      },
+      "expected": {
+        "total": 24,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1
+            ],
+            "count": 24
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 20,
+            "names": [
+              "ノノ",
+              "ノフ",
+              "ノヘ",
+              "ノレ",
+              "ノー",
+              "ノヽ",
+              "フノ",
+              "フフ",
+              "フヘ",
+              "フレ",
+              "フー",
+              "フヽ",
+              "ヘノ",
+              "ヘフ",
+              "ヘヘ",
+              "ヘレ",
+              "ヘー",
+              "ヘヽ",
+              "レノ",
+              "レフ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "odoriji_in_second_position",
+      "description": "姓なし・2 文字とも 3 画の漢字・総画数 6。2 文字目の先頭は 々（U+3005）。1 文字目には 々 は出ない",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "strokes",
+            "strokes": 3,
+            "script": "kanji"
+          },
+          {
+            "kind": "strokes",
+            "strokes": 3,
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            6
+          ]
+        }
+      },
+      "expected": {
+        "total": 1406,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              3,
+              3
+            ],
+            "count": 1406
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 5,
+            "names": [
+              "万々",
+              "万万",
+              "万丈",
+              "万三",
+              "万上"
+            ]
+          },
+          {
+            "offset": 38,
+            "limit": 3,
+            "names": [
+              "丈々",
+              "丈万",
+              "丈丈"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fixed_first_hiragana_second",
+      "description": "姓なし・1 文字目は「陽」に固定・2 文字目はひらがな・総画数 15（2 文字目は 3 画のひらがな）",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "陽"
+          },
+          {
+            "kind": "free",
+            "script": "hiragana"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            15
+          ]
+        }
+      },
+      "expected": {
+        "total": 31,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              12,
+              3
+            ],
+            "count": 31
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 30,
+            "names": [
+              "陽ぁ",
+              "陽あ",
+              "陽ぇ",
+              "陽え",
+              "陽か",
+              "陽ぐ",
+              "陽け",
+              "陽さ",
+              "陽じ",
+              "陽す",
+              "陽せ",
+              "陽そ",
+              "陽ち",
+              "陽づ",
+              "陽に",
+              "陽ぬ",
+              "陽ぴ",
+              "陽べ",
+              "陽み",
+              "陽も",
+              "陽ゃ",
+              "陽や",
+              "陽ゅ",
+              "陽ゆ",
+              "陽ょ",
+              "陽よ",
+              "陽ら",
+              "陽る",
+              "陽れ",
+              "陽わ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "sei_two_conditions",
+      "description": "姓「田中」・2 文字・漢字・人格 15 かつ総格 24",
+      "input": {
+        "sei": "田中",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "jinkaku": [
+            15
+          ],
+          "soukaku": [
+            24
+          ]
+        }
+      },
+      "expected": {
+        "total": 23716,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              11,
+              4
+            ],
+            "count": 23716
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "乾不",
+              "乾丑",
+              "乾中",
+              "乾丹",
+              "乾乏",
+              "乾予",
+              "乾云",
+              "乾互",
+              "乾五",
+              "乾井"
+            ]
+          },
+          {
+            "offset": 100,
+            "limit": 10,
+            "names": [
+              "亀切",
+              "亀刈",
+              "亀勾",
+              "亀勿",
+              "亀匁",
+              "亀匂",
+              "亀化",
+              "亀匹",
+              "亀区",
+              "亀升"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "sei_value_set",
+      "description": "姓「田中」・2 文字・漢字・総格は 24 か 31 か 32",
+      "input": {
+        "sei": "田中",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "soukaku": [
+            24,
+            31,
+            32
+          ]
+        }
+      },
+      "expected": {
+        "total": 1570323,
+        "breakdown_count": 57,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              14
+            ],
+            "count": 378
+          },
+          {
+            "strokes": [
+              1,
+              21
+            ],
+            "count": 32
+          },
+          {
+            "strokes": [
+              1,
+              22
+            ],
+            "count": 28
+          },
+          {
+            "strokes": [
+              2,
+              13
+            ],
+            "count": 3458
+          },
+          {
+            "strokes": [
+              2,
+              20
+            ],
+            "count": 294
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一像",
+              "一僕",
+              "一僚",
+              "一僞",
+              "一嘉",
+              "一嘗",
+              "一噌",
+              "一團",
+              "一塾",
+              "一境"
+            ]
+          },
+          {
+            "offset": 5000,
+            "limit": 10,
+            "names": [
+              "丈雇",
+              "丈雰",
+              "丈雲",
+              "丈項",
+              "丈順",
+              "丈須",
+              "丈飯",
+              "丈飲",
+              "丈黃",
+              "丈黑"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "one_char_sei_one_char_mei_gaikaku",
+      "description": "姓「林」（8 画）・1 文字・漢字・外格 20。外格 = 0 + 8 + n なので、12 画の字",
+      "input": {
+        "sei": "林",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "gaikaku": [
+            20
+          ]
+        }
+      },
+      "expected": {
+        "total": 302,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              12
+            ],
+            "count": 302
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "偉",
+              "傍",
+              "傘",
+              "備",
+              "僅",
+              "凱",
+              "剩",
+              "割",
+              "創",
+              "勝"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "three_chars_mixed",
+      "description": "姓「佐藤」（7 + 18 画）・3 文字・1 文字目は 5 画の漢字・2 文字目はひらがな・3 文字目は any・総格 33",
+      "input": {
+        "sei": "佐藤",
+        "positions": [
+          {
+            "kind": "strokes",
+            "strokes": 5,
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "hiragana"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          }
+        ],
+        "conditions": {
+          "soukaku": [
+            33
+          ]
+        }
+      },
+      "expected": {
+        "total": 66528,
+        "breakdown_count": 2,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              5,
+              1,
+              2
+            ],
+            "count": 44688
+          },
+          {
+            "strokes": [
+              5,
+              2,
+              1
+            ],
+            "count": 21840
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "且く丁",
+              "且く七",
+              "且く乃",
+              "且く九",
+              "且く了",
+              "且く二",
+              "且く人",
+              "且く入",
+              "且く八",
+              "且く刀"
+            ]
+          },
+          {
+            "offset": 1000,
+            "limit": 10,
+            "names": [
+              "丘つカ",
+              "丘つク",
+              "丘つコ",
+              "丘つス",
+              "丘つセ",
+              "丘つソ",
+              "丘つト",
+              "丘つナ",
+              "丘つニ",
+              "丘つヌ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "four_chars",
+      "description": "姓なし・4 文字・漢字・総画数 8",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            8
+          ]
+        }
+      },
+      "expected": {
+        "total": 305520,
+        "breakdown_count": 35,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1,
+              1,
+              5
+            ],
+            "count": 896
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              2,
+              4
+            ],
+            "count": 4312
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              3,
+              3
+            ],
+            "count": 5776
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              4,
+              2
+            ],
+            "count": 4312
+          },
+          {
+            "strokes": [
+              1,
+              1,
+              5,
+              1
+            ],
+            "count": 896
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一一一且",
+              "一一一世",
+              "一一一丘",
+              "一一一丙",
+              "一一一主",
+              "一一一丼",
+              "一一一乎",
+              "一一一仔",
+              "一一一仕",
+              "一一一他"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "error_tenkaku_condition",
+      "description": "天格は条件にできない",
+      "input": {
+        "sei": "田中",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "tenkaku": [
+            9
+          ]
+        }
+      },
+      "expected": {
+        "error": "invalid_condition"
+      }
+    },
+    {
+      "id": "error_name_only_jinkaku",
+      "description": "姓なしでは人格を条件にできない",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "jinkaku": [
+            9
+          ]
+        }
+      },
+      "expected": {
+        "error": "invalid_condition"
+      }
+    },
+    {
+      "id": "error_unknown_sei_char",
+      "description": "姓に画数がわからない字がある",
+      "input": {
+        "sei": "田A",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "soukaku": [
+            20
+          ]
+        }
+      },
+      "expected": {
+        "error": "unknown_stroke"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "description": "仕様書 kaku.md のテストケース。姓と名から五格を求める。期待値は手で計算し、確かめたもの。",
+  "school": "shinjitai",
+  "cases": [
+    { "id": "two_two", "sei": "田中", "mei": "健太", "sei_strokes": [5, 4], "mei_strokes": [11, 4], "kaku": { "tenkaku": 9, "jinkaku": 15, "chikaku": 15, "soukaku": 24, "gaikaku": 9 } },
+    { "id": "three_three", "sei": "長谷川", "mei": "健太郎", "sei_strokes": [8, 7, 3], "mei_strokes": [11, 4, 9], "kaku": { "tenkaku": 18, "jinkaku": 14, "chikaku": 24, "soukaku": 42, "gaikaku": 28 } },
+    { "id": "one_char_sei", "sei": "林", "mei": "健太", "sei_strokes": [8], "mei_strokes": [11, 4], "kaku": { "tenkaku": 8, "jinkaku": 19, "chikaku": 15, "soukaku": 23, "gaikaku": 12 } },
+    { "id": "one_char_sei_three_mei", "sei": "林", "mei": "健太郎", "sei_strokes": [8], "mei_strokes": [11, 4, 9], "kaku": { "tenkaku": 8, "jinkaku": 19, "chikaku": 24, "soukaku": 32, "gaikaku": 21 } },
+    { "id": "one_char_mei", "sei": "田中", "mei": "翔", "sei_strokes": [5, 4], "mei_strokes": [12], "kaku": { "tenkaku": 9, "jinkaku": 16, "chikaku": 12, "soukaku": 21, "gaikaku": 17 } },
+    { "id": "three_sei_one_mei", "sei": "長谷川", "mei": "健", "sei_strokes": [8, 7, 3], "mei_strokes": [11], "kaku": { "tenkaku": 18, "jinkaku": 14, "chikaku": 11, "soukaku": 29, "gaikaku": 26 } },
+    { "id": "one_char_both", "sei": "林", "mei": "翔", "sei_strokes": [8], "mei_strokes": [12], "kaku": { "tenkaku": 8, "jinkaku": 20, "chikaku": 12, "soukaku": 20, "gaikaku": 20 } },
+    { "id": "kanji_numeral", "sei": "山", "mei": "四郎", "sei_strokes": [3], "mei_strokes": [5, 9], "kaku": { "tenkaku": 3, "jinkaku": 8, "chikaku": 14, "soukaku": 17, "gaikaku": 12 } },
+    { "id": "odoriji_in_sei", "sei": "佐々木", "mei": "翔", "sei_strokes": [7, 3, 4], "mei_strokes": [12], "kaku": { "tenkaku": 14, "jinkaku": 16, "chikaku": 12, "soukaku": 26, "gaikaku": 22 } },
+    { "id": "odoriji_in_mei", "sei": "田中", "mei": "健々", "sei_strokes": [5, 4], "mei_strokes": [11, 3], "kaku": { "tenkaku": 9, "jinkaku": 15, "chikaku": 14, "soukaku": 23, "gaikaku": 8 } },
+    { "id": "hiragana_mei", "sei": "佐々木", "mei": "さくら", "sei_strokes": [7, 3, 4], "mei_strokes": [3, 1, 3], "kaku": { "tenkaku": 14, "jinkaku": 7, "chikaku": 7, "soukaku": 21, "gaikaku": 14 } },
+    { "id": "hiragana_one_char_sei", "sei": "林", "mei": "ゆうな", "sei_strokes": [8], "mei_strokes": [3, 2, 5], "kaku": { "tenkaku": 8, "jinkaku": 11, "chikaku": 10, "soukaku": 18, "gaikaku": 15 } },
+    { "id": "katakana_dakuten", "sei": "田中", "mei": "ガク", "sei_strokes": [5, 4], "mei_strokes": [4, 2], "kaku": { "tenkaku": 9, "jinkaku": 8, "chikaku": 6, "soukaku": 15, "gaikaku": 7 } },
+    { "id": "hiragana_handakuten", "sei": "田中", "mei": "ぱんだ", "sei_strokes": [5, 4], "mei_strokes": [5, 2, 6], "kaku": { "tenkaku": 9, "jinkaku": 9, "chikaku": 13, "soukaku": 22, "gaikaku": 13 } },
+    { "id": "small_kana", "sei": "田中", "mei": "りょう", "sei_strokes": [5, 4], "mei_strokes": [2, 3, 2], "kaku": { "tenkaku": 9, "jinkaku": 6, "chikaku": 7, "soukaku": 16, "gaikaku": 10 } },
+    { "id": "long_vowel", "sei": "田中", "mei": "ルーク", "sei_strokes": [5, 4], "mei_strokes": [2, 1, 2], "kaku": { "tenkaku": 9, "jinkaku": 6, "chikaku": 5, "soukaku": 14, "gaikaku": 8 } }
+  ],
+  "name_only": [
+    { "id": "name_only_total", "mei": "陽菜", "mei_strokes": [12, 11], "chikaku": 23 },
+    { "id": "name_only_one_char", "mei": "翔", "mei_strokes": [12], "chikaku": 12 }
+  ]
+}

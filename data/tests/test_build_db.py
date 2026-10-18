@@ -146,6 +146,7 @@ class BuildTest(unittest.TestCase):
             kanjidic,
             [("example", "辻", 6, "一点しんにょう")],
             version,
+            [("さ", "hiragana", 3, 1, 1, None), ("ー", "katakana", 1, 0, 1, "長音記号")],
         )
         self.con = sqlite3.connect(str(self.out))
 
@@ -199,6 +200,28 @@ class BuildTest(unittest.TestCase):
 
     def test_override(self):
         self.assertEqual(self.query("SELECT school, char, strokes FROM override"), [("example", "辻", 6)])
+
+    def test_non_kanji(self):
+        self.assertEqual(
+            self.query("SELECT char, script, strokes, initial_ok, auto_ok FROM non_kanji ORDER BY char"),
+            [("さ", "hiragana", 3, 1, 1), ("ー", "katakana", 1, 0, 1)],
+        )
+
+    def test_non_kanji_that_is_also_kanji_fails(self):
+        kanjidic = build_db.parse_kanjidic(io.BytesIO(KANJIDIC_SAMPLE.encode("utf-8")))
+        with self.assertRaises(ValueError):
+            build_db.build(
+                Path(self.tmp.name) / "x.sqlite", {}, kanjidic, [], None, [("桜", "kanji", 10, 1, 1, None)]
+            )
+
+    def test_non_kanji_csv_in_repo(self):
+        rows = build_db.load_non_kanji(build_db.DATA_DIR / "non_kanji.csv")
+        by_char = {r[0]: r for r in rows}
+        self.assertEqual(len(rows), 179)
+        self.assertEqual(by_char["さ"][2], 3)
+        self.assertEqual(by_char["が"][2], by_char["か"][2] + 2)  # 濁点は +2
+        self.assertEqual(by_char["ぱ"][2], by_char["は"][2] + 1)  # 半濁点は +1
+        self.assertEqual(by_char["々"][1:], ("kanji", 3, 0, 1, "繰り返し記号。いつも3画"))
 
     def test_override_with_unknown_char_fails(self):
         kanjidic = build_db.parse_kanjidic(io.BytesIO(KANJIDIC_SAMPLE.encode("utf-8")))

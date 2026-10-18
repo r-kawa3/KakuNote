@@ -1,0 +1,31 @@
+{
+  "description": "仕様書 strokes.md のテストケース。input を前処理して 1 文字ずつに分け、各字の画数を求める。期待値は手で書いたもの。",
+  "school": "shinjitai",
+  "cases": [
+    { "id": "kanji_basic", "input": "海福", "chars": ["海", "福"], "strokes": [9, 13] },
+    { "id": "kanji_numeral_is_glyph", "input": "四九十", "chars": ["四", "九", "十"], "strokes": [5, 2, 2] },
+    { "id": "odoriji_always_3", "input": "佐々木", "chars": ["佐", "々", "木"], "strokes": [7, 3, 4] },
+    { "id": "hiragana", "input": "さくら", "chars": ["さ", "く", "ら"], "strokes": [3, 1, 3] },
+    { "id": "dakuten_plus_2", "input": "かが", "chars": ["か", "が"], "strokes": [3, 5] },
+    { "id": "handakuten_plus_1", "input": "はぱ", "chars": ["は", "ぱ"], "strokes": [4, 5] },
+    { "id": "small_kana_same_as_large", "input": "やゃ", "chars": ["や", "ゃ"], "strokes": [3, 3] },
+    { "id": "katakana_long_vowel", "input": "ルーク", "chars": ["ル", "ー", "ク"], "strokes": [2, 1, 2] },
+    { "id": "katakana_iteration_marks", "input": "ヽヾゝゞ", "chars": ["ヽ", "ヾ", "ゝ", "ゞ"], "strokes": [1, 3, 1, 3] },
+    { "id": "halfwidth_katakana", "input": "ｶﾞｸ", "chars": ["ガ", "ク"], "strokes": [4, 2] },
+    { "id": "combining_dakuten", "input": "がく", "chars": ["が", "く"], "strokes": [5, 1] },
+    { "id": "trim_spaces", "input": "　林 ", "chars": ["林"], "strokes": [8] },
+    { "id": "no_nfc_compat_ideograph", "input": "崎﨑", "chars": ["崎", "﨑"], "strokes": [11, 12] },
+    { "id": "surrogate_pair", "input": "𠮟", "chars": ["𠮟"], "strokes": [5] },
+    { "id": "alt_strokes", "input": "兎厩", "chars": ["兎", "厩"], "strokes": [8, 12], "alt_strokes": [[7], [13, 14]] },
+    { "id": "error_space_inside", "input": "健 太", "error": "invalid_input" },
+    { "id": "error_bad_dakuten", "input": "あ゙", "error": "invalid_input" },
+    { "id": "error_unknown_char", "input": "健A", "error": "unknown_stroke", "unknown_chars": ["A"] }
+  ],
+  "mei_warnings": [
+    { "id": "ok", "mei": "健太", "warnings": [] },
+    { "id": "not_name_char", "mei": "澤太", "warnings": [{ "char": "澤", "position": 1, "type": "not_name_char" }] },
+    { "id": "compat_ideograph_not_name_char", "mei": "﨑", "warnings": [{ "char": "﨑", "position": 1, "type": "not_name_char" }] },
+    { "id": "not_initial", "mei": "んな", "warnings": [{ "char": "ん", "position": 1, "type": "not_initial" }] },
+    { "id": "odoriji_second_is_ok", "mei": "菜々", "warnings": [] }
+  ]
+}

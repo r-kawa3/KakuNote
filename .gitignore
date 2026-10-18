@@ -43,7 +43,7 @@ Packages/
 # .swiftpm
 .build/
 
-# データ生成（data/README.md を参照）
+# データ生成（data/build_db.py を参照）
 data/sources/
 data/build/
 __pycache__/

@@ -5,7 +5,12 @@
 
 元データ（data/sources/ に置く）:
     Unihan_IRGSources.txt  Unicode の Unihan データベース（部首と画数）
+                           https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip を展開したもの
     kanjidic2.xml.gz       EDRDG の KANJIDIC2（現代の画数、読み、常用・人名用の区別）
+                           http://www.edrdg.org/kanjidic/kanjidic2.xml.gz
+
+出力: data/build/kanji.sqlite
+テスト: python3 -m unittest discover -s data/tests
 
 標準ライブラリだけで動く（Python 3.9 以上）。
 """
@@ -199,6 +204,30 @@ def load_overrides(path: Path) -> List[Tuple[str, str, int, Optional[str]]]:
     return rows
 
 
+NonKanjiRow = Tuple[str, str, int, int, int, Optional[str]]
+
+
+def load_non_kanji(path: Path) -> List[NonKanjiRow]:
+    """non_kanji.csv（char,script,strokes,initial_ok,auto_ok,note）を読む。"""
+    rows = []
+    with path.open(encoding="utf-8", newline="") as f:
+        for line_no, row in enumerate(csv.DictReader(f), start=2):
+            try:
+                rows.append(
+                    (
+                        row["char"],
+                        row["script"],
+                        int(row["strokes"]),
+                        int(row["initial_ok"]),
+                        int(row["auto_ok"]),
+                        row.get("note") or None,
+                    )
+                )
+            except (KeyError, ValueError) as e:
+                raise ValueError(f"{path}:{line_no}: 読めない行です: {row}") from e
+    return rows
+
+
 def category_for(grade: Optional[int]) -> Optional[str]:
     if grade in _JOYO_GRADES:
         return "joyo"
@@ -213,6 +242,7 @@ def build(
     kanjidic: Kanjidic,
     overrides: Iterable[Tuple[str, str, int, Optional[str]]],
     unicode_version: Optional[str],
+    non_kanji: Iterable[NonKanjiRow] = (),
     schema_path: Path = DATA_DIR / "schema.sql",
 ) -> Dict[str, int]:
     """DB を作り直す。件数のまとめを返す。"""
@@ -222,7 +252,16 @@ def build(
 
     entries = sorted(kanjidic.entries, key=lambda e: ord(e.char[0]) if len(e.char) == 1 else sys.maxsize)
     known = {e.char for e in entries}
-    stats = {"kanji": 0, "name_ok": 0, "no_radical": 0, "reading": 0, "alt_stroke": 0, "variant": 0, "override": 0}
+    stats = {
+        "kanji": 0,
+        "name_ok": 0,
+        "no_radical": 0,
+        "reading": 0,
+        "alt_stroke": 0,
+        "variant": 0,
+        "non_kanji": 0,
+        "override": 0,
+    }
 
     con = sqlite3.connect(str(out_path))
     try:
@@ -280,6 +319,12 @@ def build(
                 con.execute("INSERT INTO variant VALUES (?, ?)", (e.char, v))
                 stats["variant"] += 1
 
+        for row in sorted(non_kanji, key=lambda r: ord(r[0])):
+            if row[0] in known:
+                raise ValueError(f"non_kanji.csv: {row[0]} は KANJIDIC2 にもある字です")
+            con.execute("INSERT INTO non_kanji VALUES (?, ?, ?, ?, ?, ?)", row)
+            stats["non_kanji"] += 1
+
         for school, char, strokes, note in overrides:
             if char not in known:
                 raise ValueError(f"overrides.csv: {char} は KANJIDIC2 にない字です")
@@ -298,12 +343,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--unihan", type=Path, default=DATA_DIR / "sources" / "Unihan_IRGSources.txt")
     parser.add_argument("--kanjidic", type=Path, default=DATA_DIR / "sources" / "kanjidic2.xml.gz")
     parser.add_argument("--overrides", type=Path, default=DATA_DIR / "overrides.csv")
+    parser.add_argument("--non-kanji", type=Path, default=DATA_DIR / "non_kanji.csv")
     parser.add_argument("--out", type=Path, default=DATA_DIR / "build" / "kanji.sqlite")
     args = parser.parse_args(argv)
 
-    for path in (args.unihan, args.kanjidic, args.overrides):
+    for path in (args.unihan, args.kanjidic, args.overrides, args.non_kanji):
         if not path.exists():
-            print(f"エラー: {path} が見つかりません（data/README.md を参照）", file=sys.stderr)
+            print(f"エラー: {path} が見つかりません（build_db.py の先頭の説明を参照）", file=sys.stderr)
             return 1
 
     radicals, unicode_version = load_unihan_radicals(args.unihan)
@@ -311,8 +357,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     with opener(args.kanjidic, "rb") as f:
         kanjidic = parse_kanjidic(f)
     overrides = load_overrides(args.overrides)
+    non_kanji = load_non_kanji(args.non_kanji)
 
-    stats = build(args.out, radicals, kanjidic, overrides, unicode_version)
+    stats = build(args.out, radicals, kanjidic, overrides, unicode_version, non_kanji)
     print(f"保存先: {args.out}")
     print(f"Unicode {unicode_version} / KANJIDIC2 {kanjidic.database_version}")
     for key, value in stats.items():
