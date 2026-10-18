@@ -28,7 +28,7 @@ class ResultRouter: ResultRouterInput {
         let presenter = ResultPresenter(
             interactor: interactor,
             router: router,
-            sei: query.sei
+            query: query
         )
 
         interactor.output = presenter

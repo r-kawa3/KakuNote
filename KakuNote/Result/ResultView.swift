@@ -31,12 +31,15 @@ struct ResultView: View {
                 List {
                     Section {
                         ForEach(Array(presenter.names.enumerated()), id: \.offset) { index, name in
-                            NavigationLink {
-                                ResultRouter.detailView(sei: presenter.sei, mei: name)
-                            } label: {
-                                Text(name)
-                                    .font(.title2)
-                                    .padding(.vertical, 4)
+                            HStack {
+                                NavigationLink {
+                                    ResultRouter.detailView(sei: presenter.sei, mei: name)
+                                } label: {
+                                    Text(name)
+                                        .font(.title2)
+                                        .padding(.vertical, 4)
+                                }
+                                FavoriteButton(sei: presenter.sei, mei: name, query: presenter.query)
                             }
                             .onAppear { presenter.rowDidAppear(at: index) }
                         }

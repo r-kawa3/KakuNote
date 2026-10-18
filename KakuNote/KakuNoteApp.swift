@@ -9,6 +9,9 @@ import SwiftUI
 
 @main
 struct KakuNoteApp: App {
+    // お気に入りは「探す」の一覧と「お気に入り」タブで共有する
+    @State private var favorites = FavoritesModel.makeDefault()
+
     var body: some Scene {
         WindowGroup {
             TabView {
@@ -18,7 +21,11 @@ struct KakuNoteApp: App {
                 Tab("調べる", systemImage: "character.book.closed") {
                     LookupRouter.assembleModules()
                 }
+                Tab("お気に入り", systemImage: "heart") {
+                    FavoritesView()
+                }
             }
+            .environment(favorites)
         }
     }
 }

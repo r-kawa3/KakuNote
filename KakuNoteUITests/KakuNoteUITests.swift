@@ -117,6 +117,59 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["lookup.kaku.soukaku"].label, "24画")
     }
 
+    /// 一覧の候補をお気に入りに保存し、「お気に入り」タブで五格と条件が見られる。
+    /// アプリを終了して起動し直しても残っていて、削除もできる。
+    @MainActor
+    func testFavoritesSaveListPersistAndDelete() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["KAKUNOTE_FAVORITES_FILE"] = "uitest-favorites.sqlite"
+        app.launchEnvironment["KAKUNOTE_FAVORITES_RESET"] = "1"
+        app.launch()
+
+        app.tabBars.buttons["お気に入り"].tap()
+        XCTAssertTrue(app.staticTexts["お気に入りはまだありません"].waitForExistence(timeout: 5))
+
+        // 「探す」: 姓「田中」・2 文字・人格 15・総格 24
+        app.tabBars.buttons["探す"].tap()
+        let sei = app.textFields["search.sei"]
+        XCTAssertTrue(sei.waitForExistence(timeout: 5))
+        sei.tap()
+        sei.typeText("田中\n")
+        app.buttons["2文字"].tap()
+        type(app, "15", into: "search.kaku.jinkaku")
+        type(app, "24", into: "search.kaku.soukaku")
+        let submit = app.buttons["search.submit"]
+        for _ in 0..<5 where !submit.isHittable {
+            app.swipeUp()
+        }
+        submit.tap()
+
+        let heart = app.buttons["favorite.toggle.乾不"]
+        XCTAssertTrue(heart.waitForExistence(timeout: 10))
+        XCTAssertEqual(heart.label, "お気に入りに追加")
+        heart.tap()
+        XCTAssertEqual(heart.label, "お気に入りから外す")
+        XCTAssertEqual(heart.value as? String, "保存済み")
+
+        let expectedRow = "田中 乾不、天格 9画、人格 15画、地格 15画、外格 9画、総格 24画、2文字・人格 15・総格 24"
+        app.tabBars.buttons["お気に入り"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)[expectedRow].waitForExistence(timeout: 5))
+
+        // 終了して起動し直しても残っている
+        app.terminate()
+        app.launchEnvironment["KAKUNOTE_FAVORITES_RESET"] = "0"
+        app.launch()
+        app.tabBars.buttons["お気に入り"].tap()
+        let row = app.descendants(matching: .any)[expectedRow].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+
+        // スワイプで削除できる
+        row.swipeLeft()
+        // シミュレータの言語によって、ボタンの名前が変わる
+        app.buttons.matching(NSPredicate(format: "label IN %@", ["Delete", "削除"])).firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["お気に入りはまだありません"].waitForExistence(timeout: 5))
+    }
+
     @MainActor
     private func type(_ app: XCUIApplication, _ text: String, into identifier: String) {
         let field = app.textFields[identifier]

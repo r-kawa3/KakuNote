@@ -6,7 +6,7 @@
 import Foundation
 
 /// 格の種類。
-nonisolated enum KakuKind: String, CaseIterable, Sendable {
+nonisolated enum KakuKind: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable {
     case tenkaku, jinkaku, chikaku, soukaku, gaikaku
 }
 
@@ -23,7 +23,7 @@ extension Kaku {
 }
 
 /// 位置ごとの文字の種類。
-nonisolated enum ScriptFilter: String, CaseIterable, Sendable {
+nonisolated enum ScriptFilter: String, CaseIterable, Codable, Sendable {
     case kanji, hiragana, katakana, any
 
     func accepts(_ script: Script) -> Bool {
@@ -37,7 +37,7 @@ nonisolated enum ScriptFilter: String, CaseIterable, Sendable {
 }
 
 /// 名の 1 つの位置の条件。
-nonisolated enum PositionCondition: Hashable, Sendable {
+nonisolated enum PositionCondition: Hashable, Codable, Sendable {
     /// この字にする
     case fixed(String)
     /// n 画の字にする
@@ -47,7 +47,8 @@ nonisolated enum PositionCondition: Hashable, Sendable {
 }
 
 /// 検索の条件（仕様書 search.md「入力」）。
-nonisolated struct SearchQuery: Hashable, Sendable {
+/// お気に入りには、探したときの条件として JSON で保存する。
+nonisolated struct SearchQuery: Hashable, Codable, Sendable {
     /// 姓。nil なら姓なし（名前のみ検索）
     var sei: String?
     /// 名の位置 1〜L の条件（L は 1〜4）

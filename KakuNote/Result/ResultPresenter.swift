@@ -24,16 +24,18 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
     var total: Int?
     var isLoading = false
     var errorMessage: String?
+    /// 検索の条件（お気に入りに一緒に保存する）
+    let query: SearchQuery
     /// 検索した姓（候補の詳細で使う）。nil なら姓なし
-    let sei: String?
+    var sei: String? { query.sei }
 
     private let interactor: ResultInteractorInput
     private let router: ResultRouterInput
 
-    init(interactor: ResultInteractorInput, router: ResultRouterInput, sei: String?) {
+    init(interactor: ResultInteractorInput, router: ResultRouterInput, query: SearchQuery) {
         self.interactor = interactor
         self.router = router
-        self.sei = sei
+        self.query = query
     }
 
     // MARK: - View Input
