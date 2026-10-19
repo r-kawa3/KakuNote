@@ -14,6 +14,8 @@ final class KakuNoteUITests: XCTestCase {
 
         // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
+        // 画面の配置は縦向きを前提にしている
+        XCUIDevice.shared.orientation = .portrait
 
         // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
@@ -64,7 +66,8 @@ final class KakuNoteUITests: XCTestCase {
     func testLengthStepperRangeAndSixChars() throws {
         let app = XCUIApplication()
         app.launch()
-        let value = app.staticTexts["search.length.value"]
+        // 数字と「文字」を 1 つにまとめた要素なので、種類を問わずに探す
+        let value = app.descendants(matching: .any)["search.length.value"].firstMatch
         XCTAssertTrue(value.waitForExistence(timeout: 5))
         XCTAssertEqual(value.label, "2文字")
 
@@ -83,6 +86,68 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["result.total"].label, "64件")
         XCTAssertTrue(app.buttons["一一一一一一"].exists)
+    }
+
+    /// 名前の形のマスを選んで固定すると、マスにその字が出て、検索の条件になる。6 文字ではマスが横に並ぶ。
+    @MainActor
+    func testNameShapeCellsFixAChar() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 最初は 2 文字で、1 文字目のマスが選ばれている
+        let cell1 = app.buttons["search.cell.1"]
+        XCTAssertTrue(cell1.waitForExistence(timeout: 5))
+        XCTAssertEqual(cell1.value as? String, "選択中")
+        XCTAssertEqual(cell1.label, "1文字目 自由")
+
+        // 1 文字目を「陽」に固定する
+        app.buttons["search.kind.fixed"].tap()
+        let fixed = app.textFields["search.fixed"]
+        XCTAssertTrue(fixed.waitForExistence(timeout: 5))
+        fixed.tap()
+        fixed.typeText("陽\n")
+        XCTAssertEqual(cell1.label, "1文字目 陽")
+
+        // 2 文字目のマスを選ぶと、条件の切り替えがそのマスのものになる
+        app.buttons["search.cell.2"].tap()
+        XCTAssertEqual(app.buttons["search.cell.2"].value as? String, "選択中")
+        XCTAssertFalse(app.textFields["search.fixed"].exists)
+
+        // 陽（12 画）+ 1 画の漢字（一・乙）= 総画数 13
+        search(app, length: 2, total: "13")
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "2件")
+        XCTAssertTrue(app.buttons["陽一"].exists)
+        XCTAssertTrue(app.buttons["陽乙"].exists)
+    }
+
+    /// 6 文字にすると、名前の形のマスが 6 つ並ぶ（入りきらない分は横にスクロールする）。
+    @MainActor
+    func testSixCellsScrollHorizontally() throws {
+        let app = XCUIApplication()
+        app.launch()
+        setLength(app, 6)
+        let cell6 = app.buttons["search.cell.6"]
+        XCTAssertTrue(cell6.waitForExistence(timeout: 5))
+        app.buttons["search.cell.1"].swipeLeft()
+        XCTAssertTrue(cell6.isHittable)
+        cell6.tap()
+        XCTAssertEqual(cell6.value as? String, "選択中")
+    }
+
+    /// 「この条件で探す」は、スクロールしなくても押せる。
+    @MainActor
+    func testSubmitButtonIsAlwaysVisible() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let submit = app.buttons["search.submit"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        XCTAssertTrue(submit.isHittable)
+        setLength(app, 6)
+        XCTAssertTrue(submit.isHittable)
+        // 総画数が空なら、その旨が出る
+        submit.tap()
+        XCTAssertEqual(app.staticTexts["search.formError"].label, "総画数を入力してください")
     }
 
     /// 件数の多い検索でも先頭が出て、スクロールすると続き（51 件目以降）が出る。
@@ -119,8 +184,10 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertEqual(tenkaku.label, "9画")
 
         setLength(app, 2)
+        // 姓ありでは、一番上のカードが総格。人格は「ほかの格」の折りたたみの中
+        type(app, "24", into: "search.total")
+        openOtherKaku(app)
         type(app, "15", into: "search.kaku.jinkaku")
-        type(app, "24", into: "search.kaku.soukaku")
         let submit = app.buttons["search.submit"]
         for _ in 0..<5 where !submit.isHittable {
             app.swipeUp()
@@ -162,8 +229,10 @@ final class KakuNoteUITests: XCTestCase {
         sei.tap()
         sei.typeText("田中\n")
         setLength(app, 2)
+        // 姓ありでは、一番上のカードが総格。人格は「ほかの格」の折りたたみの中
+        type(app, "24", into: "search.total")
+        openOtherKaku(app)
         type(app, "15", into: "search.kaku.jinkaku")
-        type(app, "24", into: "search.kaku.soukaku")
         let submit = app.buttons["search.submit"]
         for _ in 0..<5 where !submit.isHittable {
             app.swipeUp()
@@ -206,10 +275,22 @@ final class KakuNoteUITests: XCTestCase {
         field.typeText(text + "\n")
     }
 
+    /// 姓ありのとき、「ほかの格」の折りたたみを開く。
+    @MainActor
+    private func openOtherKaku(_ app: XCUIApplication) {
+        let disclosure = app.buttons["ほかの格も条件にする（人格・地格・外格）"]
+        for _ in 0..<5 where !disclosure.isHittable {
+            app.swipeUp()
+        }
+        disclosure.tap()
+        XCTAssertTrue(app.textFields["search.kaku.jinkaku"].waitForExistence(timeout: 5))
+    }
+
     /// 文字数のステッパーで、名の文字数を合わせる。
     @MainActor
     private func setLength(_ app: XCUIApplication, _ length: Int) {
-        let value = app.staticTexts["search.length.value"]
+        // 数字と「文字」を 1 つにまとめた要素なので、種類を問わずに探す
+        let value = app.descendants(matching: .any)["search.length.value"].firstMatch
         XCTAssertTrue(value.waitForExistence(timeout: 5))
         for _ in 0..<6 where value.label != "\(length)文字" {
             let current = Int(value.label.replacingOccurrences(of: "文字", with: "")) ?? length
