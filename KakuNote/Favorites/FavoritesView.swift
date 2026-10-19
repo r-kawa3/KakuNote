@@ -8,47 +8,110 @@ import SwiftUI
 /// 「お気に入り」タブ: 保存した名前と五格を並べて見比べる。
 struct FavoritesView: View {
     @Environment(FavoritesModel.self) private var favorites
+    /// タップしたお気に入り（詳細の画面を出す）
+    @State private var selected: Favorite?
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(alignment: .leading, spacing: 0) {
+                WaHeader(seal: "好", title: "お気に入り")
+                    .padding(.horizontal, Wa.Metrics.screenPadding)
+                    .padding(.top, 8)
                 if favorites.items.isEmpty {
-                    ContentUnavailableView(
-                        "お気に入りはまだありません",
-                        systemImage: "heart",
-                        description: Text(favorites.errorMessage ?? "「探す」の一覧で、ハートのボタンを押すと保存できます。")
-                    )
+                    EmptyFavorites(errorMessage: favorites.errorMessage)
                 } else {
-                    List {
-                        Group {
-                            ForEach(favorites.items) { favorite in
-                                NavigationLink {
-                                    CandidateDetailView(sei: favorite.sei, mei: favorite.mei)
-                                } label: {
-                                    FavoriteRow(favorite: favorite)
-                                }
-                            }
-                            .onDelete { offsets in
-                                for index in offsets {
-                                    favorites.remove(favorites.items[index])
-                                }
-                            }
-                        }
-                        .waRow()
-                    }
-                    .accessibilityIdentifier("favorites.list")
+                    list
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .waScreen()
-            .navigationTitle("お気に入り")
-            .aboutButton()
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(item: $selected) { favorite in
+                CandidateDetailView(sei: favorite.sei, mei: favorite.mei)
+            }
         }
+    }
+
+    private var list: some View {
+        List {
+            Text("\(favorites.items.count)件")
+                .font(Wa.gothic(.footnote, weight: .bold))
+                .foregroundStyle(Wa.secondaryText)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: Wa.Metrics.screenPadding, bottom: 0, trailing: Wa.Metrics.screenPadding))
+            ForEach(favorites.items) { favorite in
+                Button {
+                    selected = favorite
+                } label: {
+                    FavoriteCard(favorite: favorite)
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 5, leading: Wa.Metrics.screenPadding, bottom: 5, trailing: Wa.Metrics.screenPadding))
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        favorites.remove(favorite)
+                    } label: {
+                        Label("削除", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .accessibilityIdentifier("favorites.list")
     }
 }
 
-/// お気に入りの 1 行: 名前・五格・探したときの条件。
-private struct FavoriteRow: View {
+/// お気に入りがないときの画面: 点線の枠のハート、説明、「探しにいく」。
+private struct EmptyFavorites: View {
+    let errorMessage: String?
+    @Environment(\.openSearchTab) private var openSearchTab
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "heart")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(Wa.dashed)
+                .frame(width: 120, height: 120)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Wa.Metrics.cornerRadius)
+                        .strokeBorder(Wa.dashed, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                )
+                .accessibilityHidden(true)
+            VStack(spacing: 8) {
+                Text("お気に入りはまだありません")
+                    .font(Wa.mincho(22, bold: true, relativeTo: .title3))
+                    .tracking(1)
+                Text(errorMessage ?? "「探す」の候補の一覧で、\nハートを押すと保存できます。")
+                    .font(Wa.gothic(.footnote))
+                    .foregroundStyle(Wa.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+            Button {
+                openSearchTab()
+            } label: {
+                Text("探しにいく")
+                    .font(Wa.gothic(.subheadline, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Wa.accent)
+                    .padding(.horizontal, 28)
+                    .frame(minHeight: 48)
+                    .overlay(RoundedRectangle(cornerRadius: Wa.Metrics.cornerRadius).stroke(Wa.accent, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("favorites.goSearch")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, 60)
+    }
+}
+
+/// お気に入りの 1 枚: 明朝の大きな名前、五格（同じ並び・同じ幅）、探したときの条件。
+private struct FavoriteCard: View {
     let favorite: Favorite
 
     private var fullName: String {
@@ -72,29 +135,40 @@ private struct FavoriteRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(fullName)
-                .font(Wa.mincho(26, bold: true, relativeTo: .title2))
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(fullName)
+                    .font(Wa.mincho(28, bold: true, relativeTo: .title))
+                    .foregroundStyle(Wa.ink)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Wa.dashed)
+            }
+            HStack(spacing: 0) {
                 ForEach(values, id: \.0) { title, value in
-                    VStack {
+                    VStack(spacing: 2) {
                         Text(title)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Wa.secondaryText)
                         Text("\(value)")
-                            .font(.headline)
+                            .font(Wa.mincho(20, bold: true, relativeTo: .headline))
                             .monospacedDigit()
+                            .foregroundStyle(title == "総格" || title == "総画数" ? Wa.accent : Wa.ink)
                     }
-                    .frame(minWidth: 36)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
                 }
             }
+            .background(Wa.background, in: RoundedRectangle(cornerRadius: Wa.Metrics.cellCornerRadius))
             if let query = favorite.query {
                 Text(ConditionSummary.text(for: query))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Wa.secondaryText)
             }
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .waCard()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
     }

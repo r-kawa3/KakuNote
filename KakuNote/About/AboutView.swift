@@ -50,32 +50,3 @@ struct AboutView: View {
         }
     }
 }
-
-extension View {
-    /// ナビゲーションバーの右上に「このアプリについて」を開くボタンを付ける。
-    func aboutButton() -> some View {
-        modifier(AboutButtonModifier())
-    }
-}
-
-private struct AboutButtonModifier: ViewModifier {
-    @State private var isPresented = false
-
-    func body(content: Content) -> some View {
-        content
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isPresented = true
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                    .accessibilityLabel("このアプリについて")
-                    .accessibilityIdentifier("about.open")
-                }
-            }
-            .sheet(isPresented: $isPresented) {
-                AboutView()
-            }
-    }
-}

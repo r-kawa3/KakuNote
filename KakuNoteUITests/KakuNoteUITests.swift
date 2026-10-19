@@ -222,8 +222,9 @@ final class KakuNoteUITests: XCTestCase {
         app.tabBars.buttons["お気に入り"].tap()
         XCTAssertTrue(app.staticTexts["お気に入りはまだありません"].waitForExistence(timeout: 5))
 
-        // 「探す」: 姓「田中」・2 文字・人格 15・総格 24
-        app.tabBars.buttons["探す"].tap()
+        // 「探しにいく」で「探す」タブに移る。姓「田中」・2 文字・人格 15・総格 24
+        app.buttons["favorites.goSearch"].tap()
+        XCTAssertTrue(app.buttons["search.submit"].waitForExistence(timeout: 5))
         let sei = app.textFields["search.sei"]
         XCTAssertTrue(sei.waitForExistence(timeout: 5))
         sei.tap()

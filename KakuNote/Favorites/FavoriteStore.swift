@@ -7,7 +7,7 @@ import Foundation
 import SQLite3
 
 /// お気に入りの 1 件。
-struct Favorite: Identifiable, Equatable {
+struct Favorite: Identifiable, Hashable {
     let id: Int64
     /// 姓。姓なしで探した候補なら nil
     let sei: String?
