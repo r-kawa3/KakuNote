@@ -11,102 +11,68 @@ struct LookupView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Group {
-                    Section {
-                        TextField("姓（例: 田中）", text: $presenter.sei)
-                            .accessibilityIdentifier("lookup.sei")
-                        TextField("名（例: 健太）", text: $presenter.mei)
-                            .accessibilityIdentifier("lookup.mei")
-                    } footer: {
-                        Text("姓を空にすると、名の総画数だけを出します。")
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    WaHeader(seal: "画", title: "画数を調べる")
+                    inputCard
 
                     if presenter.isLoading {
                         ProgressView()
+                            .tint(Wa.accent)
+                            .frame(maxWidth: .infinity)
                     } else if let message = presenter.errorMessage {
-                        Section {
-                            Text(message)
-                                .foregroundStyle(.red)
-                                .accessibilityIdentifier("lookup.error")
-                        }
+                        Label(message, systemImage: "exclamationmark.circle.fill")
+                            .font(Wa.gothic(.subheadline))
+                            .foregroundStyle(Wa.seal)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .waCard()
+                            .accessibilityIdentifier("lookup.error")
                     } else if let result = presenter.result {
-                        LookupResultSections(result: result)
+                        LookupResultView(result: result)
                     }
                 }
-                .waRow()
+                .padding(.horizontal, Wa.Metrics.screenPadding)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .waScreen()
-            .navigationTitle("調べる")
-            .aboutButton()
+            .toolbar(.hidden, for: .navigationBar)
             .onChange(of: presenter.sei) { presenter.inputDidChange() }
             .onChange(of: presenter.mei) { presenter.inputDidChange() }
             .onAppear { presenter.viewDidAppear() }
         }
     }
 
-}
-
-/// 「調べる」の結果（警告・各字の画数・五格）の表示。候補の詳細でも使う。
-struct LookupResultSections: View {
-    let result: LookupResult
-
-    var body: some View {
-        if !result.warnings.isEmpty {
-            Section {
-                ForEach(Array(result.warnings.enumerated()), id: \.offset) { _, warning in
-                    Label(LookupPresenter.message(for: warning), systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                }
+    /// 姓・名の入力。1 つのカードに 2 行。
+    private var inputCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 0) {
+                inputRow(label: "姓", text: $presenter.sei, prompt: "例：田中", identifier: "lookup.sei")
+                Divider().overlay(Wa.divider)
+                inputRow(label: "名", text: $presenter.mei, prompt: "例：健太", identifier: "lookup.mei")
             }
-        }
-
-        if !result.sei.isEmpty {
-            Section("姓") { charRows(result.sei) }
-        }
-        if !result.mei.isEmpty {
-            Section("名") { charRows(result.mei) }
-        }
-
-        if let kaku = result.kaku {
-            Section("五格") {
-                kakuRow("天格", kaku.tenkaku, id: "tenkaku")
-                kakuRow("人格", kaku.jinkaku, id: "jinkaku")
-                kakuRow("地格", kaku.chikaku, id: "chikaku")
-                kakuRow("外格", kaku.gaikaku, id: "gaikaku")
-                kakuRow("総格", kaku.soukaku, id: "soukaku")
-            }
-        } else if let total = result.nameOnlyTotal {
-            Section {
-                kakuRow("総画数", total, id: "total")
-            }
+            .waCard()
+            Text("姓を空にすると、名の総画数だけを出します。")
+                .font(.caption)
+                .foregroundStyle(Wa.secondaryText)
+                .padding(.horizontal, 4)
         }
     }
 
-    private func charRows(_ chars: [LookupChar]) -> some View {
-        ForEach(Array(chars.enumerated()), id: \.offset) { _, item in
-            HStack {
-                Text(item.char)
-                    .font(Wa.mincho(26, bold: true, relativeTo: .title2))
-                Spacer()
-                VStack(alignment: .trailing) {
-                    Text("\(item.strokes)画")
-                    if !item.altStrokes.isEmpty {
-                        Text("別の数え方: " + item.altStrokes.map { "\($0)画" }.joined(separator: "・"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+    private func inputRow(label: String, text: Binding<String>, prompt: String, identifier: String) -> some View {
+        HStack(spacing: 14) {
+            Text(label)
+                .font(Wa.gothic(.subheadline, weight: .bold))
+                .tracking(1)
+                .frame(width: 24, alignment: .leading)
+            TextField("", text: text, prompt: Text(prompt).foregroundStyle(Wa.placeholder))
+                .font(Wa.mincho(20))
+                .accessibilityLabel(label)
+                .accessibilityIdentifier(identifier)
         }
-    }
-
-    private func kakuRow(_ title: String, _ value: Int, id: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text("\(value)画")
-                .accessibilityIdentifier("lookup.kaku.\(id)")
-        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 52)
     }
 }

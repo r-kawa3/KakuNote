@@ -11,17 +11,18 @@ struct CandidateDetailView: View {
     let mei: String
 
     var body: some View {
-        Form {
-            Group {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
                 switch lookup() {
                 case .success(let result):
-                    LookupResultSections(result: result)
+                    LookupResultView(result: result)
                 case .failure(let error):
                     Text(LookupPresenter.message(for: error))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Wa.seal)
                 }
             }
-            .waRow()
+            .padding(.horizontal, Wa.Metrics.screenPadding)
+            .padding(.vertical, 12)
         }
         .waScreen()
         .navigationTitle(((sei ?? "") + " " + mei).trimmingCharacters(in: .whitespaces))
