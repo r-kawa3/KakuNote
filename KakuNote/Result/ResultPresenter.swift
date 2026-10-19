@@ -20,7 +20,9 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
     static let pageSize = 50
 
     // Viewが観察するプロパティ（@Observableなので自動で検知される）
-    var names: [String] = []
+    var rows: [ResultRow] = []
+    /// 一覧の上に並べる条件のチップ
+    var chips: [SearchSummary.Chip] { SearchSummary.chips(for: query) }
     var total: Int?
     var isLoading = false
     var errorMessage: String?
@@ -47,8 +49,8 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
 
     /// 一覧の最後の行が表示されたら、続きを作る。
     func rowDidAppear(at index: Int) {
-        guard let total, index == names.count - 1, names.count < total else { return }
-        interactor.loadPage(offset: names.count, limit: Self.pageSize)
+        guard let total, index == rows.count - 1, rows.count < total else { return }
+        interactor.loadPage(offset: rows.count, limit: Self.pageSize)
     }
 
     // MARK: - Interactor Output
@@ -58,9 +60,9 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
         interactor.loadPage(offset: 0, limit: Self.pageSize)
     }
 
-    func didLoadPage(_ names: [String], offset: Int) {
-        guard offset == self.names.count else { return }
-        self.names.append(contentsOf: names)
+    func didLoadPage(_ rows: [ResultRow], offset: Int) {
+        guard offset == self.rows.count else { return }
+        self.rows.append(contentsOf: rows)
     }
 
     func didFailToSearch(with error: Error) {

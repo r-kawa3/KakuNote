@@ -83,6 +83,12 @@ nonisolated struct NameSearch: Sendable {
         let count: Int
     }
 
+    /// 候補 1 件: 名と、その各字の画数（内訳）。
+    struct Candidate: Equatable, Sendable {
+        let name: String
+        let strokes: [Int]
+    }
+
     /// 名の文字数の上限
     static let maxLength = 6
     /// 候補の総数の上限（2^53 - 1）。JSON や多くの言語で整数を正確に扱える範囲に合わせる
@@ -91,6 +97,8 @@ nonisolated struct NameSearch: Sendable {
     let total: Int
     /// 名の文字数
     let length: Int
+    /// 姓の各字の画数。姓なしなら nil
+    let seiStrokes: [Int]?
     /// 条件を満たす内訳の画数を 1 本の配列に並べたもの（内訳ごとに length 個ずつ）。
     /// 内訳は 10 万を超えることがあるので、内訳ごとに配列を作らない
     private let breakdownStrokes: [Int]
@@ -184,6 +192,7 @@ nonisolated struct NameSearch: Sendable {
             try visit(0, 1)
         }
         self.length = length
+        self.seiStrokes = seiStrokes
         self.breakdownStrokes = breakdownStrokes
         self.breakdownCounts = breakdownCounts
         self.total = total
@@ -191,17 +200,23 @@ nonisolated struct NameSearch: Sendable {
 
     /// 先頭から offset 件目（0 始まり）から、最大 limit 件の候補を返す。
     func page(offset: Int, limit: Int) -> [String] {
+        candidates(offset: offset, limit: limit).map(\.name)
+    }
+
+    /// page と同じ範囲の候補を、各字の画数と一緒に返す。
+    func candidates(offset: Int, limit: Int) -> [Candidate] {
         guard offset >= 0, limit > 0 else { return [] }
-        var result: [String] = []
+        var result: [Candidate] = []
         var index = offset
         for (i, count) in breakdownCounts.enumerated() {
             if index >= count {
                 index -= count
                 continue
             }
-            let lists = (0..<length).map { candidates[$0][breakdownStrokes[i * length + $0]]! }
+            let strokes = Array(breakdownStrokes[(i * length)..<((i + 1) * length)])
+            let lists = (0..<length).map { candidates[$0][strokes[$0]]! }
             while index < count && result.count < limit {
-                result.append(Self.combination(lists, at: index))
+                result.append(Candidate(name: Self.combination(lists, at: index), strokes: strokes))
                 index += 1
             }
             if result.count >= limit { break }

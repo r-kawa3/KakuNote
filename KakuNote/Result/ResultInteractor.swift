@@ -14,7 +14,7 @@ protocol ResultInteractorInput: AnyObject {
 
 protocol ResultInteractorOutput: AnyObject {
     func didStartSearch(total: Int)
-    func didLoadPage(_ names: [String], offset: Int)
+    func didLoadPage(_ rows: [ResultRow], offset: Int)
     func didFailToSearch(with error: Error)
 }
 
@@ -53,6 +53,9 @@ class ResultInteractor: ResultInteractorInput {
     func loadPage(offset: Int, limit: Int) {
         // 1 ページ分の候補を作るのは軽いので、その場で行う
         guard let search else { return }
-        output?.didLoadPage(search.page(offset: offset, limit: limit), offset: offset)
+        let rows = search.candidates(offset: offset, limit: limit).map {
+            ResultRow.make(candidate: $0, seiStrokes: search.seiStrokes, conditions: query.conditions, school: school)
+        }
+        output?.didLoadPage(rows, offset: offset)
     }
 }

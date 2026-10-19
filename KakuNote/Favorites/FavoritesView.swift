@@ -122,7 +122,10 @@ struct FavoriteButton: View {
             favorites.toggle(sei: sei, mei: mei, query: query)
         } label: {
             Image(systemName: saved ? "heart.fill" : "heart")
-                .foregroundStyle(saved ? .pink : .secondary)
+                .font(.system(size: 22))
+                .foregroundStyle(saved ? Wa.seal : Wa.secondaryText)
+                .frame(width: Wa.Metrics.minTapSize, height: Wa.Metrics.minTapSize)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(saved ? "お気に入りから外す" : "お気に入りに追加")
