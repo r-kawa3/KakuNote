@@ -23,6 +23,8 @@ extension EnvironmentValues {
 struct KakuNoteApp: App {
     // お気に入りは「探す」の一覧と「お気に入り」タブで共有する
     @State private var favorites = FavoritesModel.makeDefault()
+    // 設定（登録した姓など）は全部の画面で共有する
+    @State private var settings = AppSettings.makeDefault()
     @State private var selectedTab: AppTab = .search
 
     init() {
@@ -43,6 +45,7 @@ struct KakuNoteApp: App {
                 }
             }
             .environment(favorites)
+            .environment(settings)
             .environment(\.openSearchTab) { selectedTab = .search }
             .tint(Wa.accent)
             // ダークモードでも、いつも明るい和の色で見せる

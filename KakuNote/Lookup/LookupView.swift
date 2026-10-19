@@ -8,6 +8,14 @@ import SwiftUI
 /// 「調べる」画面: 姓名を入れると、各字の画数と五格が出る。
 struct LookupView: View {
     @State var presenter: LookupPresenter
+    @Environment(AppSettings.self) private var settings
+    /// 設定に登録した姓を使うか（姓の欄の上のチェックボックス）
+    @State private var usesRegisteredSei = true
+
+    /// いま姓の欄に入れている、登録した姓。使わないなら nil
+    private var appliedSei: String? {
+        usesRegisteredSei ? settings.registeredSei : nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -41,6 +49,9 @@ struct LookupView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: presenter.sei) { presenter.inputDidChange() }
             .onChange(of: presenter.mei) { presenter.inputDidChange() }
+            .onChange(of: appliedSei, initial: true) {
+                if let appliedSei { presenter.sei = appliedSei }
+            }
             .onAppear { presenter.viewDidAppear() }
         }
     }
@@ -48,8 +59,14 @@ struct LookupView: View {
     /// 姓・名の入力。1 つのカードに 2 行。
     private var inputCard: some View {
         VStack(alignment: .leading, spacing: 6) {
+            if settings.registeredSei != nil {
+                WaCheckbox(title: "登録した姓を使う", isOn: $usesRegisteredSei, color: Wa.accent, identifier: "lookup.useSei")
+                    .padding(.horizontal, 4)
+            }
             VStack(spacing: 0) {
                 inputRow(label: "姓", text: $presenter.sei, prompt: "例：田中", identifier: "lookup.sei")
+                    .disabled(appliedSei != nil)
+                    .opacity(appliedSei != nil ? 0.7 : 1)
                 Divider().overlay(Wa.divider)
                 inputRow(label: "名", text: $presenter.mei, prompt: "例：健太", identifier: "lookup.mei")
             }

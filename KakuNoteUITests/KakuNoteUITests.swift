@@ -27,8 +27,7 @@ final class KakuNoteUITests: XCTestCase {
     @MainActor
     func testExample() throws {
         // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
 
         // Use XCTAssert and related functions to verify your tests produce the correct results.
         // XCUIAutomation Documentation
@@ -38,8 +37,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 「探す」で 2 文字・漢字・総画数 2 → 一一、一乙、乙一、乙乙 の順に出る。
     @MainActor
     func testNameOnlySearchOrder() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         search(app, length: 2, total: "2")
 
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
@@ -54,8 +52,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 件数が 0 のときは、その旨が出る。
     @MainActor
     func testNameOnlySearchNoResults() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         search(app, length: 1, total: "100")
 
         XCTAssertTrue(app.staticTexts["該当する名前がありません"].waitForExistence(timeout: 10))
@@ -64,8 +61,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 文字数のステッパーは 1〜6 の間だけ動く。6 文字の検索もできる。
     @MainActor
     func testLengthStepperRangeAndSixChars() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         // 数字と「文字」を 1 つにまとめた要素なので、種類を問わずに探す
         let value = app.descendants(matching: .any)["search.length.value"].firstMatch
         XCTAssertTrue(value.waitForExistence(timeout: 5))
@@ -91,8 +87,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 名前の形のマスを選んで固定すると、マスにその字が出て、検索の条件になる。6 文字ではマスが横に並ぶ。
     @MainActor
     func testNameShapeCellsFixAChar() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
 
         // 最初は 2 文字で、1 文字目のマスが選ばれている
         let cell1 = app.buttons["search.cell.1"]
@@ -124,8 +119,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 数字の欄は数字専用のキーボードで、キーボードの上の「,」で区切りを入れ、「完了」で閉じられる。
     @MainActor
     func testNumberFieldsUseSeparatorAndDone() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
 
         let total = app.textFields["search.total"]
         XCTAssertTrue(total.waitForExistence(timeout: 5))
@@ -154,8 +148,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 画数指定の欄は区切りの「,」を出さない（1 つの値だけ）。
     @MainActor
     func testStrokesFieldHasNoSeparator() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         let kind = app.buttons["search.kind.strokes"]
         XCTAssertTrue(kind.waitForExistence(timeout: 5))
         kind.tap()
@@ -172,8 +165,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 6 文字にすると、名前の形のマスが 6 つ並ぶ（入りきらない分は横にスクロールする）。
     @MainActor
     func testSixCellsScrollHorizontally() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         setLength(app, 6)
         let cell6 = app.buttons["search.cell.6"]
         XCTAssertTrue(cell6.waitForExistence(timeout: 5))
@@ -186,8 +178,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 「この条件で探す」は、スクロールしなくても押せる。
     @MainActor
     func testSubmitButtonIsAlwaysVisible() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         let submit = app.buttons["search.submit"]
         XCTAssertTrue(submit.waitForExistence(timeout: 5))
         XCTAssertTrue(submit.isHittable)
@@ -201,8 +192,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 件数の多い検索でも先頭が出て、スクロールすると続き（51 件目以降）が出る。
     @MainActor
     func testLargeSearchLoadsMoreOnScroll() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         search(app, length: 4, total: "8")
 
         XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
@@ -220,13 +210,9 @@ final class KakuNoteUITests: XCTestCase {
     /// 姓込み検索: 天格が出て、人格・総格の条件を満たす候補が出る。候補を選ぶと五格が出る。
     @MainActor
     func testSearchWithSurname() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
+        registerSei(app, "田中")
 
-        let sei = app.textFields["search.sei"]
-        XCTAssertTrue(sei.waitForExistence(timeout: 5))
-        sei.tap()
-        sei.typeText("田中\n")
         let tenkaku = app.staticTexts["search.tenkaku"]
         XCTAssertTrue(tenkaku.waitForExistence(timeout: 5))
         XCTAssertEqual(tenkaku.label, "9画")
@@ -265,6 +251,8 @@ final class KakuNoteUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KAKUNOTE_FAVORITES_FILE"] = "uitest-favorites.sqlite"
         app.launchEnvironment["KAKUNOTE_FAVORITES_RESET"] = "1"
+        app.launchEnvironment["KAKUNOTE_SETTINGS_FILE"] = "uitest-settings.json"
+        app.launchEnvironment["KAKUNOTE_SETTINGS_RESET"] = "1"
         app.launch()
 
         app.tabBars.buttons["お気に入り"].tap()
@@ -273,10 +261,7 @@ final class KakuNoteUITests: XCTestCase {
         // 「探しにいく」で「探す」タブに移る。姓「田中」・2 文字・人格 15・総格 24
         app.buttons["favorites.goSearch"].tap()
         XCTAssertTrue(app.buttons["search.submit"].waitForExistence(timeout: 5))
-        let sei = app.textFields["search.sei"]
-        XCTAssertTrue(sei.waitForExistence(timeout: 5))
-        sei.tap()
-        sei.typeText("田中\n")
+        registerSei(app, "田中")
         setLength(app, 2)
         // 姓ありでは、一番上のカードが総格。人格は「ほかの格」の折りたたみの中
         type(app, "24", into: "search.total")
@@ -302,6 +287,7 @@ final class KakuNoteUITests: XCTestCase {
         // 終了して起動し直しても残っている
         app.terminate()
         app.launchEnvironment["KAKUNOTE_FAVORITES_RESET"] = "0"
+        app.launchEnvironment["KAKUNOTE_SETTINGS_RESET"] = "0"
         app.launch()
         app.tabBars.buttons["お気に入り"].tap()
         let row = app.descendants(matching: .any)[expectedRow].firstMatch
@@ -371,8 +357,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 「調べる」タブで姓名を入れると、五格が出る。
     @MainActor
     func testLookupShowsKaku() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         app.tabBars.buttons["調べる"].tap()
 
         let sei = app.textFields["lookup.sei"]
@@ -396,8 +381,7 @@ final class KakuNoteUITests: XCTestCase {
     /// 繰り返し記号やひらがなを含む姓名でも出る。
     @MainActor
     func testLookupWithOdorijiAndHiragana() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchWithFreshSettings()
         app.tabBars.buttons["調べる"].tap()
 
         let sei = app.textFields["lookup.sei"]
@@ -415,26 +399,165 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["lookup.kaku.gaikaku"].label, "14画")
     }
 
-    /// 「探す」「調べる」の右上のボタンから「このアプリについて」を開ける。出典とデータのバージョンが出る。
+    /// 3 つの画面の右上の「設定」から設定画面を開き、そこから「このアプリについて」を開ける。出典とデータのバージョンが出る。
     @MainActor
-    func testAboutScreenFromBothTabs() throws {
-        let app = XCUIApplication()
-        app.launch()
+    func testAboutScreenFromSettings() throws {
+        let app = launchWithFreshSettings()
 
-        for tab in ["探す", "調べる"] {
+        for tab in ["探す", "調べる", "お気に入り"] {
             app.tabBars.buttons[tab].tap()
-            let about = app.buttons["about.open"]
-            XCTAssertTrue(about.waitForExistence(timeout: 5), tab)
-            about.tap()
+            let open = app.buttons["settings.open"]
+            XCTAssertTrue(open.waitForExistence(timeout: 5), tab)
+            open.tap()
+            XCTAssertTrue(app.textFields["settings.sei"].waitForExistence(timeout: 5), tab)
+            app.buttons["settings.about"].tap()
 
             XCTAssertTrue(app.staticTexts["about.KANJIDIC2.version"].waitForExistence(timeout: 5), tab)
             XCTAssertEqual(app.staticTexts["about.KANJIDIC2.version"].label, "2026-291")
             XCTAssertEqual(app.staticTexts["about.Unihan.version"].label, "Unicode 17.0.0")
             XCTAssertTrue(app.descendants(matching: .any)["CC BY-SA 4.0"].exists)
 
-            app.buttons["about.close"].tap()
-            XCTAssertTrue(about.waitForExistence(timeout: 5), tab)
+            // 設定画面に戻って閉じる
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            XCTAssertTrue(app.buttons["settings.close"].waitForExistence(timeout: 5), tab)
+            app.buttons["settings.close"].tap()
+            XCTAssertTrue(open.waitForExistence(timeout: 5), tab)
         }
+    }
+
+    /// 設定画面で姓を登録・変更・消去でき、起動し直しても残る。画数がわからない字はそれと分かる。
+    @MainActor
+    func testSettingsSeiPersistsAndShowsUnknownStrokes() throws {
+        let app = launchWithFreshSettings()
+        // 登録がないときは、「探す」は姓なしの総画数
+        XCTAssertTrue(app.textFields["search.total"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["search.total"].label, "総画数")
+        XCTAssertFalse(app.descendants(matching: .any)["search.useSei"].firstMatch.exists)
+
+        registerSei(app, "林")
+        XCTAssertEqual(app.staticTexts["search.tenkaku"].label, "8画")
+
+        // 起動し直しても残る
+        app.terminate()
+        app.launchEnvironment["KAKUNOTE_SETTINGS_RESET"] = "0"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["search.tenkaku"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["search.sei"].label, "姓「林」")
+
+        // 画数がわからない字があると、設定画面と「探す」でそれと分かる
+        app.buttons["settings.open"].tap()
+        let sei = app.textFields["settings.sei"]
+        XCTAssertTrue(sei.waitForExistence(timeout: 5))
+        XCTAssertEqual(sei.value as? String, "林")
+        XCTAssertEqual(app.staticTexts["settings.tenkaku"].label, "8画")
+        sei.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+        sei.typeText("☃")
+        XCTAssertTrue(app.descendants(matching: .any)["settings.sei.error"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["settings.close"].tap()
+        XCTAssertTrue(app.staticTexts["search.tenkaku.error"].waitForExistence(timeout: 5))
+
+        // 消すと、姓なしに戻る
+        clearSei(app)
+        XCTAssertFalse(app.staticTexts["search.sei"].exists)
+        XCTAssertEqual(app.textFields["search.total"].label, "総画数")
+    }
+
+    /// 「探す」の「姓を使う」をオフにすると、名前だけの総画数で探す。
+    @MainActor
+    func testUseSeiToggleOnSearch() throws {
+        let app = launchWithFreshSettings()
+        registerSei(app, "田中")
+        let total = app.textFields["search.total"]
+        XCTAssertEqual(total.label, "総格")
+        let useSei = app.descendants(matching: .any)["search.useSei"].firstMatch
+        XCTAssertEqual(useSei.value as? String, "オン")
+        XCTAssertTrue(app.buttons["ほかの格も条件にする（人格・地格・外格）"].exists)
+
+        useSei.tap()
+        XCTAssertEqual(useSei.value as? String, "オフ")
+        XCTAssertEqual(total.label, "総画数")
+        XCTAssertFalse(app.staticTexts["search.tenkaku"].exists)
+        XCTAssertFalse(app.buttons["ほかの格も条件にする（人格・地格・外格）"].exists)
+
+        // 名前だけ: 2 文字・総画数 2 → 4 件
+        search(app, length: 2, total: "2")
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "4件")
+    }
+
+    /// 「調べる」の「登録した姓を使う」: オンなら設定の姓が入り、オフなら自由に入力できる。
+    @MainActor
+    func testLookupUsesRegisteredSei() throws {
+        let app = launchWithFreshSettings()
+        app.tabBars.buttons["調べる"].tap()
+        // 登録がないときは、チェックボックスを出さない
+        XCTAssertTrue(app.textFields["lookup.sei"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["lookup.useSei"].firstMatch.exists)
+
+        registerSei(app, "林")
+        let useSei = app.descendants(matching: .any)["lookup.useSei"].firstMatch
+        XCTAssertTrue(useSei.waitForExistence(timeout: 5))
+        XCTAssertEqual(useSei.value as? String, "オン")
+        let sei = app.textFields["lookup.sei"]
+        XCTAssertEqual(sei.value as? String, "林")
+        XCTAssertFalse(sei.isEnabled)
+
+        let mei = app.textFields["lookup.mei"]
+        mei.tap()
+        mei.typeText("健太\n")
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["lookup.kaku.tenkaku"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["lookup.kaku.tenkaku"].label, "8画")
+
+        // オフにすると、姓を自由に入力できる
+        app.swipeDown()
+        useSei.tap()
+        XCTAssertEqual(useSei.value as? String, "オフ")
+        XCTAssertTrue(sei.isEnabled)
+        sei.tap()
+        sei.typeText("\u{8}田中\n")
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["lookup.kaku.tenkaku"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["lookup.kaku.tenkaku"].label, "9画")
+    }
+
+    /// 設定の保存先を一時ファイルにし、空の状態で起動する。
+    @MainActor
+    private func launchWithFreshSettings() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["KAKUNOTE_SETTINGS_FILE"] = "uitest-settings.json"
+        app.launchEnvironment["KAKUNOTE_SETTINGS_RESET"] = "1"
+        app.launch()
+        return app
+    }
+
+    /// 右上の「設定」から姓を登録して、設定画面を閉じる。
+    @MainActor
+    private func registerSei(_ app: XCUIApplication, _ sei: String) {
+        let open = app.buttons["settings.open"]
+        for _ in 0..<3 where !open.isHittable {
+            app.swipeDown()
+        }
+        open.tap()
+        let field = app.textFields["settings.sei"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText(sei)
+        app.buttons["settings.close"].tap()
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+    }
+
+    /// 設定の姓を消す。
+    @MainActor
+    private func clearSei(_ app: XCUIApplication) {
+        app.buttons["settings.open"].tap()
+        let field = app.textFields["settings.sei"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        // 右寄せの欄なので、右の端を押して、カーソルを字の後ろに置く
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+        let length = (field.value as? String)?.count ?? 0
+        field.typeText(String(repeating: "\u{8}", count: length))
+        app.buttons["settings.close"].tap()
     }
 
     @MainActor

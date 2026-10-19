@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// 画面の上部の見出し: 朱の印 + 明朝体の題名、右に「このアプリについて」の丸いボタン。
+/// 画面の上部の見出し: 朱の印 + 明朝体の題名、右に「設定」の丸いボタン。
 /// この見出しを使う画面では、ナビゲーションバーを隠す。
 struct WaHeader: View {
     /// 印の漢字 1 字（探す「名」、調べる「画」、お気に入り「好」）
@@ -22,21 +22,21 @@ struct WaHeader: View {
                     .accessibilityAddTraits(.isHeader)
             }
             Spacer()
-            AboutCircleButton()
+            SettingsCircleButton()
         }
         .frame(minHeight: Wa.Metrics.minTapSize)
     }
 }
 
-/// 「このアプリについて」を開く丸いボタン。
-struct AboutCircleButton: View {
+/// 設定画面を開く丸いボタン（歯車）。
+struct SettingsCircleButton: View {
     @State private var isPresented = false
 
     var body: some View {
         Button {
             isPresented = true
         } label: {
-            Image(systemName: "info")
+            Image(systemName: "gearshape")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Wa.ink)
                 .frame(width: Wa.Metrics.minTapSize, height: Wa.Metrics.minTapSize)
@@ -44,11 +44,40 @@ struct AboutCircleButton: View {
                 .overlay(Circle().stroke(Wa.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("このアプリについて")
-        .accessibilityIdentifier("about.open")
+        .accessibilityLabel("設定")
+        .accessibilityIdentifier("settings.open")
         .sheet(isPresented: $isPresented) {
-            AboutView()
+            SettingsView()
         }
+    }
+}
+
+/// チェックボックス。押すたびにオン・オフが替わる。色は置く面に合わせて渡す。
+struct WaCheckbox: View {
+    let title: String
+    @Binding var isOn: Bool
+    var color: Color = Wa.ink
+    let identifier: String
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 17))
+                Text(title)
+                    .font(Wa.gothic(.footnote, weight: .bold))
+            }
+            .foregroundStyle(color)
+            .frame(minHeight: Wa.Metrics.minTapSize)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(isOn ? "オン" : "オフ")
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityIdentifier(identifier)
     }
 }
 

@@ -7,10 +7,12 @@
 
 import SwiftUI
 
-/// 「探す」画面: 総画数（姓ありなら総格）を一番上に大きく置き、姓・名の文字数・名前の形（位置ごとの条件）を
-/// 指定して、名前の候補を探す。「この条件で探す」ボタンは画面の下に固定する。
+/// 「探す」画面: 総画数（姓を使うなら総格）を一番上に大きく置き、名の文字数・名前の形（位置ごとの条件）を
+/// 指定して、名前の候補を探す。姓は設定画面で登録したものを使う。「この条件で探す」ボタンは画面の下に固定する。
 struct TopView: View {
-    @State private var seiText = ""
+    @Environment(AppSettings.self) private var settings
+    /// 登録した姓を使うか（一番上のカードの「姓を使う」）
+    @State private var usesSei = true
     @State private var length = 2
     @State private var positions: [PositionInput] = Array(repeating: PositionInput(), count: NameSearch.maxLength)
     /// 名前の形で選んでいるマス（0 から）
@@ -30,7 +32,6 @@ struct TopView: View {
     enum Field: Hashable {
         case total
         case kaku(KakuKind)
-        case sei
         case fixed
         case strokes
     }
@@ -42,9 +43,12 @@ struct TopView: View {
         (.gaikaku, "外格", "総格−人格"),
     ]
 
-    private var hasSei: Bool {
-        !seiText.trimmingCharacters(in: .whitespaces).isEmpty
+    /// 検索に使う姓。登録がない・「姓を使う」がオフなら nil
+    private var sei: String? {
+        usesSei ? settings.registeredSei : nil
     }
+
+    private var hasSei: Bool { sei != nil }
 
     var body: some View {
         NavigationStack {
@@ -52,7 +56,6 @@ struct TopView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     WaHeader(seal: "名", title: "名前を探す")
                     totalCard
-                    seiField
                     if hasSei {
                         otherKakuSection
                     }
@@ -130,9 +133,9 @@ struct TopView: View {
             .overlay(alignment: .bottom) {
                 Rectangle().fill(Wa.onAccent.opacity(0.4)).frame(height: 1)
             }
-            if hasSei {
-                tenkakuRow
-                    .padding(.top, 8)
+            if let registered = settings.registeredSei {
+                seiRow(registered)
+                    .padding(.top, 6)
             }
         }
         .foregroundStyle(Wa.onAccent)
@@ -140,47 +143,41 @@ struct TopView: View {
         .background(Wa.accent, in: RoundedRectangle(cornerRadius: Wa.Metrics.largeCornerRadius))
     }
 
-    @ViewBuilder
-    private var tenkakuRow: some View {
-        if let data {
-            switch Self.tenkaku(of: seiText, data: data) {
-            case .success(let value):
+    /// 登録した姓の行: 「姓「田中」・天格 9画」と「姓を使う」。
+    private func seiRow(_ registered: String) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("天格")
+                    Text("姓「\(registered)」")
                         .font(Wa.gothic(.footnote, weight: .bold))
-                    Text("\(value)画")
-                        .font(Wa.mincho(17, bold: true))
-                        .accessibilityIdentifier("search.tenkaku")
-                    Text("姓だけで決まります")
-                        .font(.caption2)
-                        .foregroundStyle(Wa.onAccentFaint)
+                        .accessibilityIdentifier("search.sei")
+                    if usesSei {
+                        tenkakuText(registered)
+                    }
                 }
-            case .failure(let message):
-                Text(message.text)
-                    .font(.footnote)
-                    .foregroundStyle(Wa.onAccent)
-                    .accessibilityIdentifier("search.tenkaku.error")
+                .opacity(usesSei ? 1 : 0.6)
+                if usesSei, let data, case .failure(let message) = SeiCheck.tenkaku(of: registered, data: data) {
+                    Text(message.text)
+                        .font(.footnote)
+                        .accessibilityIdentifier("search.tenkaku.error")
+                }
             }
+            Spacer(minLength: 4)
+            WaCheckbox(title: "姓を使う", isOn: $usesSei, color: Wa.onAccent, identifier: "search.useSei")
         }
     }
 
-    // MARK: - 姓
-
-    private var seiField: some View {
-        HStack(spacing: 14) {
-            Text("姓")
-                .font(Wa.gothic(.subheadline, weight: .bold))
-                .tracking(1)
-            TextField("", text: $seiText, prompt: Text("省略できます（例：山田）").foregroundStyle(Wa.placeholder))
-                .font(Wa.mincho(18))
-                .multilineTextAlignment(.trailing)
-                .focused($focusedField, equals: .sei)
-                .accessibilityLabel("姓")
-                .accessibilityIdentifier("search.sei")
+    @ViewBuilder
+    private func tenkakuText(_ registered: String) -> some View {
+        if let data, case .success(let value) = SeiCheck.tenkaku(of: registered, data: data) {
+            HStack(spacing: 4) {
+                Text("・天格")
+                    .font(Wa.gothic(.footnote, weight: .bold))
+                Text("\(value)画")
+                    .font(Wa.mincho(17, bold: true))
+                    .accessibilityIdentifier("search.tenkaku")
+            }
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 52)
-        .waCard()
     }
 
     // MARK: - ほかの格（姓ありのとき）
@@ -346,18 +343,7 @@ struct TopView: View {
             positionConditions.append(condition)
         }
         formError = nil
-        query = SearchQuery(sei: hasSei ? seiText : nil, positions: positionConditions, conditions: conditions)
-    }
-
-    /// 姓の天格。入力に問題があれば、表示する文言を返す。
-    static func tenkaku(of sei: String, data: KanjiData) -> Result<Int, TenkakuMessage> {
-        do {
-            return .success(try data.strokes(of: TextPreprocessor.characters(from: sei)).reduce(0, +))
-        } catch let error as UnknownStrokeError {
-            return .failure(TenkakuMessage("画数がわからない字があります: " + error.chars.map { "「\($0)」" }.joined(separator: "、")))
-        } catch {
-            return .failure(TenkakuMessage("姓に使えない文字（途中の空白など）があります"))
-        }
+        query = SearchQuery(sei: sei, positions: positionConditions, conditions: conditions)
     }
 
     /// 「24, 31」「24、31」「24 31」のような入力から、正の整数を取り出す。
@@ -367,11 +353,6 @@ struct TopView: View {
             .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
             .filter { $0 > 0 }
     }
-}
-
-struct TenkakuMessage: Error {
-    let text: String
-    init(_ text: String) { self.text = text }
 }
 
 /// 1 つの位置の入力欄の状態。
@@ -615,4 +596,5 @@ private struct PositionDetail: View {
 
 #Preview {
     TopView()
+        .environment(AppSettings(store: nil))
 }
