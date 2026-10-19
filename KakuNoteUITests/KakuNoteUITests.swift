@@ -121,6 +121,54 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(app.buttons["陽乙"].exists)
     }
 
+    /// 数字の欄は数字専用のキーボードで、キーボードの上の「,」で区切りを入れ、「完了」で閉じられる。
+    @MainActor
+    func testNumberFieldsUseSeparatorAndDone() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let total = app.textFields["search.total"]
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        total.tap()
+        total.typeText("24")
+        let comma = app.buttons["keyboard.comma"]
+        XCTAssertTrue(comma.waitForExistence(timeout: 5))
+        comma.tap()
+        // 区切りで終わっているときは、もう一度押しても重ならない
+        comma.tap()
+        total.typeText("31")
+        XCTAssertEqual(total.value as? String, "24,31")
+
+        // 「完了」でキーボードが閉じ、「この条件で探す」が押せる
+        app.buttons["keyboard.done"].tap()
+        XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 1))
+        let submit = app.buttons["search.submit"]
+        XCTAssertTrue(submit.isHittable)
+        submit.tap()
+
+        // 2 つの値で検索された
+        let chip = app.staticTexts["総画数 24・31画"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10))
+    }
+
+    /// 画数指定の欄は区切りの「,」を出さない（1 つの値だけ）。
+    @MainActor
+    func testStrokesFieldHasNoSeparator() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let kind = app.buttons["search.kind.strokes"]
+        XCTAssertTrue(kind.waitForExistence(timeout: 5))
+        kind.tap()
+        let strokes = app.textFields["search.strokes"]
+        XCTAssertTrue(strokes.waitForExistence(timeout: 5))
+        strokes.tap()
+        strokes.typeText("12")
+        XCTAssertTrue(app.buttons["keyboard.done"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["keyboard.comma"].exists)
+        app.buttons["keyboard.done"].tap()
+        XCTAssertEqual(app.buttons["search.cell.1"].label, "1文字目 12画")
+    }
+
     /// 6 文字にすると、名前の形のマスが 6 つ並ぶ（入りきらない分は横にスクロールする）。
     @MainActor
     func testSixCellsScrollHorizontally() throws {
@@ -273,7 +321,9 @@ final class KakuNoteUITests: XCTestCase {
             app.swipeUp()
         }
         field.tap()
-        field.typeText(text + "\n")
+        // 数字の欄は数字専用のキーボードなので、改行ではなく「完了」で閉じる
+        field.typeText(text)
+        app.buttons["keyboard.done"].tap()
     }
 
     /// 姓ありのとき、「ほかの格」の折りたたみを開く。
@@ -309,7 +359,8 @@ final class KakuNoteUITests: XCTestCase {
             app.swipeUp()
         }
         totalField.tap()
-        totalField.typeText(total + "\n")
+        totalField.typeText(total)
+        app.buttons["keyboard.done"].tap()
         let submit = app.buttons["search.submit"]
         for _ in 0..<5 where !submit.isHittable {
             app.swipeUp()

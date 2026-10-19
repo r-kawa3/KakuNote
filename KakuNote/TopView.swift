@@ -23,6 +23,17 @@ struct TopView: View {
     @State private var query: SearchQuery?
     @State private var formError: String?
     @State private var data: KanjiData?
+    /// いま入力している欄（キーボードの上の「,」「完了」に使う）
+    @FocusState private var focusedField: Field?
+
+    /// 入力欄の種類
+    enum Field: Hashable {
+        case total
+        case kaku(KakuKind)
+        case sei
+        case fixed
+        case strokes
+    }
 
     /// 姓ありのとき、折りたたみの中で条件にできる格（天格は姓だけで決まるので表示だけ）
     private static let otherKakuKinds: [(kind: KakuKind, title: String, note: String)] = [
@@ -53,6 +64,26 @@ struct TopView: View {
                 .padding(.bottom, 16)
             }
             .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    if acceptsSeparator {
+                        Button {
+                            insertSeparator()
+                        } label: {
+                            Text("，区切り")
+                                .font(Wa.gothic(.subheadline, weight: .bold))
+                        }
+                        .accessibilityLabel("区切りの「,」を入れる")
+                        .accessibilityIdentifier("keyboard.comma")
+                    }
+                    Spacer()
+                    Button("完了") {
+                        focusedField = nil
+                    }
+                    .font(Wa.gothic(.subheadline, weight: .bold))
+                    .accessibilityIdentifier("keyboard.done")
+                }
+            }
             .waScreen()
             .safeAreaInset(edge: .bottom) { submitBar }
             .toolbar(.hidden, for: .navigationBar)
@@ -85,7 +116,9 @@ struct TopView: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 TextField("", text: $totalText, prompt: Text("20").foregroundStyle(Wa.onAccent.opacity(0.4)))
                     .font(Wa.mincho(64, bold: true, relativeTo: .largeTitle))
-                    .keyboardType(.numbersAndPunctuation)
+                    // 数字専用のキーボード（かな変換を通らない）。区切りはキーボードの上の「,」で入れる
+                    .keyboardType(.numberPad)
+                    .focused($focusedField, equals: .total)
                     .tint(Wa.onAccent)
                     .accessibilityLabel(hasSei ? "総格" : "総画数")
                     .accessibilityIdentifier("search.total")
@@ -141,6 +174,7 @@ struct TopView: View {
             TextField("", text: $seiText, prompt: Text("省略できます（例：山田）").foregroundStyle(Wa.placeholder))
                 .font(Wa.mincho(18))
                 .multilineTextAlignment(.trailing)
+                .focused($focusedField, equals: .sei)
                 .accessibilityLabel("姓")
                 .accessibilityIdentifier("search.sei")
         }
@@ -168,7 +202,8 @@ struct TopView: View {
                             set: { otherKakuTexts[item.kind] = $0 }
                         ), prompt: Text("例: 15").foregroundStyle(Wa.placeholder))
                         .font(Wa.mincho(20, bold: true))
-                        .keyboardType(.numbersAndPunctuation)
+                        .keyboardType(.numberPad)
+                        .focused($focusedField, equals: .kaku(item.kind))
                         .multilineTextAlignment(.trailing)
                         .accessibilityLabel(item.title)
                         .accessibilityIdentifier("search.kaku.\(item.kind.rawValue)")
@@ -224,7 +259,7 @@ struct TopView: View {
                 .padding(2)
             }
             KindTabs(kind: $positions[selectedIndex].kind)
-            PositionDetail(input: $positions[selectedIndex])
+            PositionDetail(input: $positions[selectedIndex], focusedField: $focusedField)
         }
     }
 
@@ -259,7 +294,33 @@ struct TopView: View {
         .background(Wa.background)
     }
 
+    /// いまの欄が、複数の値（「,」区切り）を受け付けるか
+    private var acceptsSeparator: Bool {
+        switch focusedField {
+        case .total, .kaku: return true
+        default: return false
+        }
+    }
+
+    /// いまの欄の末尾に区切りの「,」を足す（空のとき・すでに区切りで終わるときは足さない）
+    private func insertSeparator() {
+        func appended(_ text: String) -> String {
+            let trimmed = text.trimmingCharacters(in: .whitespaces)
+            guard let last = trimmed.last, !",、，".contains(last) else { return trimmed }
+            return trimmed + ","
+        }
+        switch focusedField {
+        case .total:
+            totalText = appended(totalText)
+        case .kaku(let kind):
+            otherKakuTexts[kind] = appended(otherKakuTexts[kind] ?? "")
+        default:
+            break
+        }
+    }
+
     private func submit() {
+        focusedField = nil
         var conditions: [KakuKind: Set<Int>] = [:]
         let totals = Self.parseNumbers(totalText)
         if !totals.isEmpty {
@@ -490,6 +551,7 @@ private struct KindTabs: View {
 /// 選んだマスの入力: 固定する字、画数、文字の種類。
 private struct PositionDetail: View {
     @Binding var input: PositionInput
+    var focusedField: FocusState<TopView.Field?>.Binding
 
     var body: some View {
         VStack(spacing: 10) {
@@ -499,6 +561,7 @@ private struct PositionDetail: View {
                     TextField("", text: $input.fixedText, prompt: Text("例: 陽").foregroundStyle(Wa.placeholder))
                         .font(Wa.mincho(24, bold: true))
                         .multilineTextAlignment(.trailing)
+                        .focused(focusedField, equals: .fixed)
                         .accessibilityLabel("固定する字")
                         .accessibilityIdentifier("search.fixed")
                 }
@@ -509,6 +572,7 @@ private struct PositionDetail: View {
                             .font(Wa.mincho(22, bold: true))
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
+                            .focused(focusedField, equals: .strokes)
                             .accessibilityLabel("画数")
                             .accessibilityIdentifier("search.strokes")
                         Text("画")
