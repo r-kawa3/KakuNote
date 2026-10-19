@@ -12,14 +12,18 @@ struct CandidateDetailView: View {
 
     var body: some View {
         Form {
-            switch lookup() {
-            case .success(let result):
-                LookupResultSections(result: result)
-            case .failure(let error):
-                Text(LookupPresenter.message(for: error))
-                    .foregroundStyle(.red)
+            Group {
+                switch lookup() {
+                case .success(let result):
+                    LookupResultSections(result: result)
+                case .failure(let error):
+                    Text(LookupPresenter.message(for: error))
+                        .foregroundStyle(.red)
+                }
             }
+            .waRow()
         }
+        .waScreen()
         .navigationTitle(((sei ?? "") + " " + mei).trimmingCharacters(in: .whitespaces))
         .navigationBarTitleDisplayMode(.inline)
     }

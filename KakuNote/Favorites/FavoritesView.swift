@@ -20,22 +20,27 @@ struct FavoritesView: View {
                     )
                 } else {
                     List {
-                        ForEach(favorites.items) { favorite in
-                            NavigationLink {
-                                CandidateDetailView(sei: favorite.sei, mei: favorite.mei)
-                            } label: {
-                                FavoriteRow(favorite: favorite)
+                        Group {
+                            ForEach(favorites.items) { favorite in
+                                NavigationLink {
+                                    CandidateDetailView(sei: favorite.sei, mei: favorite.mei)
+                                } label: {
+                                    FavoriteRow(favorite: favorite)
+                                }
+                            }
+                            .onDelete { offsets in
+                                for index in offsets {
+                                    favorites.remove(favorites.items[index])
+                                }
                             }
                         }
-                        .onDelete { offsets in
-                            for index in offsets {
-                                favorites.remove(favorites.items[index])
-                            }
-                        }
+                        .waRow()
                     }
                     .accessibilityIdentifier("favorites.list")
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .waScreen()
             .navigationTitle("お気に入り")
             .aboutButton()
         }
@@ -69,7 +74,7 @@ private struct FavoriteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(fullName)
-                .font(.title2)
+                .font(Wa.mincho(26, bold: true, relativeTo: .title2))
             HStack(spacing: 12) {
                 ForEach(values, id: \.0) { title, value in
                     VStack {

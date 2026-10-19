@@ -30,56 +30,60 @@ struct TopView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("姓（省略できます）", text: $seiText)
-                        .accessibilityIdentifier("search.sei")
-                    if hasSei {
-                        tenkakuRow
-                    }
-                } footer: {
-                    Text("姓を入れると、人格・地格・総格・外格を条件にできます。")
-                }
-
-                Section {
-                    LengthStepper(length: $length, range: 1...NameSearch.maxLength)
-                } header: {
-                    Text("名の文字数")
-                }
-
-                ForEach(0..<length, id: \.self) { index in
-                    Section("\(index + 1)文字目") {
-                        PositionEditor(input: $positions[index], index: index)
-                    }
-                }
-
-                Section {
-                    if hasSei {
-                        ForEach(Self.seiConditionKinds, id: \.0) { kind, title in
-                            conditionField(title, kind: kind, identifier: "search.kaku.\(kind.rawValue)")
-                        }
-                    } else {
-                        conditionField("総画数", kind: .chikaku, identifier: "search.total")
-                    }
-                } footer: {
-                    Text(hasSei
-                         ? "条件にしたい格だけを入れます。複数の画数は「,」で区切ります。"
-                         : "複数の画数は「,」で区切ります。")
-                }
-
-                if let formError {
+                Group {
                     Section {
-                        Text(formError)
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("search.formError")
+                        TextField("姓（省略できます）", text: $seiText)
+                            .accessibilityIdentifier("search.sei")
+                        if hasSei {
+                            tenkakuRow
+                        }
+                    } footer: {
+                        Text("姓を入れると、人格・地格・総格・外格を条件にできます。")
+                    }
+
+                    Section {
+                        LengthStepper(length: $length, range: 1...NameSearch.maxLength)
+                    } header: {
+                        Text("名の文字数")
+                    }
+
+                    ForEach(0..<length, id: \.self) { index in
+                        Section("\(index + 1)文字目") {
+                            PositionEditor(input: $positions[index], index: index)
+                        }
+                    }
+
+                    Section {
+                        if hasSei {
+                            ForEach(Self.seiConditionKinds, id: \.0) { kind, title in
+                                conditionField(title, kind: kind, identifier: "search.kaku.\(kind.rawValue)")
+                            }
+                        } else {
+                            conditionField("総画数", kind: .chikaku, identifier: "search.total")
+                        }
+                    } footer: {
+                        Text(hasSei
+                             ? "条件にしたい格だけを入れます。複数の画数は「,」で区切ります。"
+                             : "複数の画数は「,」で区切ります。")
+                    }
+
+                    if let formError {
+                        Section {
+                            Text(formError)
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("search.formError")
+                        }
+                    }
+
+                    Section {
+                        Button("実行") { submit() }
+                            .frame(maxWidth: .infinity)
+                            .accessibilityIdentifier("search.submit")
                     }
                 }
-
-                Section {
-                    Button("実行") { submit() }
-                        .frame(maxWidth: .infinity)
-                        .accessibilityIdentifier("search.submit")
-                }
+                .waRow()
             }
+            .waScreen()
             .navigationTitle("探す")
             .aboutButton()
             .navigationDestination(item: $query) { query in

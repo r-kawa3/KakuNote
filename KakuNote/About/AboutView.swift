@@ -13,24 +13,28 @@ struct AboutView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(sources, id: \.name) { source in
-                    Section(source.name) {
-                        Text(source.description)
-                        HStack {
-                            Text("データのバージョン")
-                            Spacer()
-                            Text(source.version)
-                                .accessibilityIdentifier("about.\(source.name).version")
-                        }
-                        Text(source.notice)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        ForEach(source.links, id: \.url) { link in
-                            Link(link.title, destination: link.url)
+                Group {
+                    ForEach(sources, id: \.name) { source in
+                        Section(source.name) {
+                            Text(source.description)
+                            HStack {
+                                Text("データのバージョン")
+                                Spacer()
+                                Text(source.version)
+                                    .accessibilityIdentifier("about.\(source.name).version")
+                            }
+                            Text(source.notice)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            ForEach(source.links, id: \.url) { link in
+                                Link(link.title, destination: link.url)
+                            }
                         }
                     }
                 }
+                .waRow()
             }
+            .waScreen()
             .navigationTitle("このアプリについて")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

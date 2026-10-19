@@ -29,29 +29,34 @@ struct ResultView: View {
                 )
             } else if let total = presenter.total {
                 List {
-                    Section {
-                        ForEach(Array(presenter.names.enumerated()), id: \.offset) { index, name in
-                            HStack {
-                                NavigationLink {
-                                    ResultRouter.detailView(sei: presenter.sei, mei: name)
-                                } label: {
-                                    Text(name)
-                                        .font(.title2)
-                                        .padding(.vertical, 4)
+                    Group {
+                        Section {
+                            ForEach(Array(presenter.names.enumerated()), id: \.offset) { index, name in
+                                HStack {
+                                    NavigationLink {
+                                        ResultRouter.detailView(sei: presenter.sei, mei: name)
+                                    } label: {
+                                        Text(name)
+                                            .font(Wa.mincho(26, bold: true, relativeTo: .title2))
+                                            .padding(.vertical, 4)
+                                    }
+                                    FavoriteButton(sei: presenter.sei, mei: name, query: presenter.query)
                                 }
-                                FavoriteButton(sei: presenter.sei, mei: name, query: presenter.query)
+                                .onAppear { presenter.rowDidAppear(at: index) }
                             }
-                            .onAppear { presenter.rowDidAppear(at: index) }
+                        } header: {
+                            Text("\(total)件")
+                                .accessibilityIdentifier("result.total")
                         }
-                    } header: {
-                        Text("\(total)件")
-                            .accessibilityIdentifier("result.total")
                     }
+                    .waRow()
                 }
                 .listStyle(.plain)
                 .accessibilityIdentifier("result.list")
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .waScreen()
         .navigationTitle("検索結果")
         .navigationBarTitleDisplayMode(.inline)
         // 画面イベントをPresenterにそのまま丸投げ

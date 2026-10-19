@@ -12,27 +12,31 @@ struct LookupView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("姓（例: 田中）", text: $presenter.sei)
-                        .accessibilityIdentifier("lookup.sei")
-                    TextField("名（例: 健太）", text: $presenter.mei)
-                        .accessibilityIdentifier("lookup.mei")
-                } footer: {
-                    Text("姓を空にすると、名の総画数だけを出します。")
-                }
-
-                if presenter.isLoading {
-                    ProgressView()
-                } else if let message = presenter.errorMessage {
+                Group {
                     Section {
-                        Text(message)
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("lookup.error")
+                        TextField("姓（例: 田中）", text: $presenter.sei)
+                            .accessibilityIdentifier("lookup.sei")
+                        TextField("名（例: 健太）", text: $presenter.mei)
+                            .accessibilityIdentifier("lookup.mei")
+                    } footer: {
+                        Text("姓を空にすると、名の総画数だけを出します。")
                     }
-                } else if let result = presenter.result {
-                    LookupResultSections(result: result)
+
+                    if presenter.isLoading {
+                        ProgressView()
+                    } else if let message = presenter.errorMessage {
+                        Section {
+                            Text(message)
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("lookup.error")
+                        }
+                    } else if let result = presenter.result {
+                        LookupResultSections(result: result)
+                    }
                 }
+                .waRow()
             }
+            .waScreen()
             .navigationTitle("調べる")
             .aboutButton()
             .onChange(of: presenter.sei) { presenter.inputDidChange() }
@@ -83,7 +87,7 @@ struct LookupResultSections: View {
         ForEach(Array(chars.enumerated()), id: \.offset) { _, item in
             HStack {
                 Text(item.char)
-                    .font(.title2)
+                    .font(Wa.mincho(26, bold: true, relativeTo: .title2))
                 Spacer()
                 VStack(alignment: .trailing) {
                     Text("\(item.strokes)画")
