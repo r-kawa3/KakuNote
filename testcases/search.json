@@ -2,7 +2,6 @@
   "description": "仕様書 search.md のテストケース。参照実装で作ったもの（小さい例は手で確かめた）。",
   "school": "shinjitai",
   "data_version": {
-    "unicode_version": "17.0.0",
     "kanjidic2_database_version": "2026-291"
   },
   "cases": [

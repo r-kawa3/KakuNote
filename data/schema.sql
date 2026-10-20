@@ -15,7 +15,8 @@ CREATE TABLE meta (
 CREATE TABLE kanji (
     char           TEXT PRIMARY KEY,
     codepoint      INTEGER NOT NULL UNIQUE,
-    -- 康熙字典の部首番号（Unihan kRSUnicode の 1 つ目）
+    -- 康熙字典の部首番号（Unihan kRSUnicode の 1 つ目）。
+    -- 同梱する DB には今は Unihan を入れないので、radical と kangxi_strokes は NULL（build_db.py の説明を参照）
     radical        INTEGER,
     -- 部首を康熙字典の元の形で数えた画数（例: 氵は水として 4 画）。
     -- 計算方法: 部首の元の画数 + kRSUnicode の残りの画数。

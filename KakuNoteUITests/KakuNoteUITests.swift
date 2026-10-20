@@ -414,7 +414,7 @@ final class KakuNoteUITests: XCTestCase {
 
             XCTAssertTrue(app.staticTexts["about.KANJIDIC2.version"].waitForExistence(timeout: 5), tab)
             XCTAssertEqual(app.staticTexts["about.KANJIDIC2.version"].label, "2026-291")
-            XCTAssertEqual(app.staticTexts["about.Unihan.version"].label, "Unicode 17.0.0")
+            XCTAssertFalse(app.staticTexts["about.Unihan.version"].exists)
             XCTAssertTrue(app.descendants(matching: .any)["CC BY-SA 4.0"].exists)
 
             // 設定画面に戻って閉じる

@@ -8,7 +8,9 @@ import Foundation
 /// 漢字データの出典とライセンス（「このアプリについて」に表示する）。
 ///
 /// KANJIDIC2 のライセンスでは、メニューから開ける別の画面に、使っていることと出典を表示し、
-/// ライセンスへのリンクを示すことが求められている。Unihan は Unicode の著作権表示が必要。
+/// ライセンスへのリンクを示すことが求められている。
+/// Unihan は同梱する DB に入れていないので、表示しない。入れるときは、Unicode の著作権表示と
+/// 許諾の文章の全文（Unicode License V3）を出すこと（data/build_db.py の説明を参照）。
 /// アプリを公開する前に、各配布元の最新の条件を確かめ直すこと。
 nonisolated enum Attribution {
 
@@ -38,16 +40,6 @@ nonisolated enum Attribution {
                     link("KANJIDIC プロジェクト", "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project"),
                     link("EDRDG のライセンス", "https://www.edrdg.org/edrdg/licence.html"),
                     link("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/"),
-                ]
-            ),
-            Source(
-                name: "Unihan",
-                description: "漢字の部首の情報に、Unicode の Unihan データベースを使っています。",
-                version: meta["unicode_version"].map { "Unicode \($0)" } ?? unknown,
-                notice: "© 2025 Unicode®, Inc. Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.",
-                links: [
-                    link("Unicode License", "https://www.unicode.org/license.txt"),
-                    link("Unicode の利用条件", "https://www.unicode.org/terms_of_use.html"),
                 ]
             ),
         ]

@@ -68,7 +68,6 @@ final class StrokesTests: XCTestCase {
     func testBundledDataMatchesTestCaseVersion() throws {
         let json = try SharedTestCases.load("search.json")
         let version = try XCTUnwrap(json["data_version"] as? [String: String])
-        XCTAssertEqual(data.meta["unicode_version"], version["unicode_version"])
         XCTAssertEqual(data.meta["kanjidic2_database_version"], version["kanjidic2_database_version"])
     }
 }

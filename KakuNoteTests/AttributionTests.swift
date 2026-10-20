@@ -19,10 +19,9 @@ final class AttributionTests: XCTestCase {
         XCTAssertTrue(kanjidic.links.contains { $0.url.absoluteString == "https://creativecommons.org/licenses/by-sa/4.0/" })
         XCTAssertTrue(kanjidic.links.contains { $0.url.absoluteString == "https://www.edrdg.org/edrdg/licence.html" })
 
-        let unihan = try XCTUnwrap(sources.first { $0.name == "Unihan" })
-        XCTAssertEqual(unihan.version, "Unicode 17.0.0")
-        XCTAssertTrue(unihan.notice.contains("Unicode®, Inc."))
-        XCTAssertTrue(unihan.links.contains { $0.url.absoluteString == "https://www.unicode.org/license.txt" })
+        // Unihan は同梱する DB に入れていないので、出典に出さない
+        XCTAssertEqual(sources.map(\.name), ["KANJIDIC2"])
+        XCTAssertNil(data.meta["unicode_version"])
     }
 
     func testMissingVersionIsShownAsUnknown() {

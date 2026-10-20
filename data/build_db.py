@@ -4,10 +4,15 @@
     python3 data/build_db.py
 
 元データ（data/sources/ に置く）:
-    Unihan_IRGSources.txt  Unicode の Unihan データベース（部首と画数）
-                           https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip を展開したもの
     kanjidic2.xml.gz       EDRDG の KANJIDIC2（現代の画数、読み、常用・人名用の区別）
                            http://www.edrdg.org/kanjidic/kanjidic2.xml.gz
+    Unihan_IRGSources.txt  （--unihan を付けたときだけ使う）Unicode の Unihan データベース（部首と画数）
+                           https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip を展開したもの
+
+アプリに同梱する DB には、今は Unihan を入れない（今の流派の新字体式では使わないため）。
+部首（radical）と康熙字典の画数（kangxi_strokes）は空になる。旧字体で数える流派を足すときは
+--unihan data/sources/Unihan_IRGSources.txt を付けて作り、アプリの「このアプリについて」に
+Unicode の著作権表示と許諾の文章の全文（Unicode License V3）を出すこと。
 
 出力: KakuNote/Resources/kanji.sqlite（アプリに同梱する。作り直したらコミットする）
 テスト: python3 -m unittest discover -s data/tests
@@ -268,17 +273,18 @@ def build(
         con.executescript(schema_path.read_text(encoding="utf-8"))
         meta = {
             "schema_version": "1",
-            "unicode_version": unicode_version or "",
             "kanjidic2_database_version": kanjidic.database_version or "",
             "kanjidic2_date_of_creation": kanjidic.date_of_creation or "",
         }
+        if unicode_version:
+            meta["unicode_version"] = unicode_version
         con.executemany("INSERT INTO meta VALUES (?, ?)", sorted(meta.items()))
 
         for e in entries:
             if len(e.char) != 1:
                 continue
             rs = radicals.get(e.char)
-            if rs is None:
+            if rs is None and radicals:
                 stats["no_radical"] += 1
             category = category_for(e.grade)
             con.execute(
@@ -340,7 +346,10 @@ def build(
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="KakuNote 同梱用の漢字データベースを作る")
-    parser.add_argument("--unihan", type=Path, default=DATA_DIR / "sources" / "Unihan_IRGSources.txt")
+    parser.add_argument(
+        "--unihan", type=Path, default=None,
+        help="Unihan_IRGSources.txt。付けたときだけ部首と康熙字典の画数を入れる（同梱する DB には今は入れない）",
+    )
     parser.add_argument("--kanjidic", type=Path, default=DATA_DIR / "sources" / "kanjidic2.xml.gz")
     parser.add_argument("--overrides", type=Path, default=DATA_DIR / "overrides.csv")
     parser.add_argument("--non-kanji", type=Path, default=DATA_DIR / "non_kanji.csv")
@@ -348,11 +357,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     for path in (args.unihan, args.kanjidic, args.overrides, args.non_kanji):
-        if not path.exists():
+        if path is not None and not path.exists():
             print(f"エラー: {path} が見つかりません（build_db.py の先頭の説明を参照）", file=sys.stderr)
             return 1
 
-    radicals, unicode_version = load_unihan_radicals(args.unihan)
+    radicals, unicode_version = load_unihan_radicals(args.unihan) if args.unihan else ({}, None)
     opener = gzip.open if args.kanjidic.suffix == ".gz" else open
     with opener(args.kanjidic, "rb") as f:
         kanjidic = parse_kanjidic(f)
@@ -361,7 +370,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     stats = build(args.out, radicals, kanjidic, overrides, unicode_version, non_kanji)
     print(f"保存先: {args.out}")
-    print(f"Unicode {unicode_version} / KANJIDIC2 {kanjidic.database_version}")
+    print(f"KANJIDIC2 {kanjidic.database_version}" + (f" / Unicode {unicode_version}" if unicode_version else "（Unihan なし）"))
     for key, value in stats.items():
         print(f"  {key}: {value}")
     return 0
