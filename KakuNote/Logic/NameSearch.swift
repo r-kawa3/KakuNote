@@ -51,10 +51,28 @@ nonisolated enum PositionCondition: Hashable, Codable, Sendable {
 nonisolated struct SearchQuery: Hashable, Codable, Sendable {
     /// 姓。nil なら姓なし（名前のみ検索）
     var sei: String?
-    /// 名の位置 1〜L の条件（L は 1〜4）
+    /// 名の位置 1〜L の条件（L は 1〜6）
     var positions: [PositionCondition]
     /// 格ごとに許す値の集合。すべてを満たす名だけを候補にする
     var conditions: [KakuKind: Set<Int>]
+    /// 避けたい字。固定でない位置の候補から外す（仕様書 search.md「避けたい字」）。
+    /// String の Set は正準等価な字を同じとみなすので、配列で持つ
+    var avoid: [String] = []
+}
+
+extension SearchQuery {
+    private enum CodingKeys: String, CodingKey {
+        case sei, positions, conditions, avoid
+    }
+
+    // 避けたい字がなかったころに保存した条件（お気に入り）も読めるようにする
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sei = try container.decodeIfPresent(String.self, forKey: .sei)
+        positions = try container.decode([PositionCondition].self, forKey: .positions)
+        conditions = try container.decode([KakuKind: Set<Int>].self, forKey: .conditions)
+        avoid = try container.decodeIfPresent([String].self, forKey: .avoid) ?? []
+    }
 }
 
 nonisolated enum SearchError: Error, Equatable {
@@ -132,6 +150,13 @@ nonisolated struct NameSearch: Sendable {
             seiStrokes = nil
         }
 
+        // 避けたい字。前処理してから、コードポイントの並びで比べる
+        let avoided = Set(try query.avoid.flatMap { try Self.characters($0) }.map { $0.unicodeScalars.map(\.value) })
+        func autoCandidates(_ script: ScriptFilter, initial: Bool) -> [CharInfo] {
+            let chars = data.autoCandidates(script: script, initial: initial)
+            return avoided.isEmpty ? chars : chars.filter { !avoided.contains($0.char.unicodeScalars.map(\.value)) }
+        }
+
         // 位置ごとの候補の字
         var candidates: [[Int: [String]]] = []
         for (index, position) in query.positions.enumerated() {
@@ -142,10 +167,10 @@ nonisolated struct NameSearch: Sendable {
                 let strokes = try Self.strokes(of: chars, data: data)
                 candidates.append([strokes[0]: chars])
             case .strokes(let strokes, let script):
-                let chars = data.autoCandidates(script: script, initial: index == 0).filter { $0.strokes == strokes }
+                let chars = autoCandidates(script, initial: index == 0).filter { $0.strokes == strokes }
                 candidates.append(chars.isEmpty ? [:] : [strokes: chars.map(\.char)])
             case .free(let script):
-                candidates.append(Dictionary(grouping: data.autoCandidates(script: script, initial: index == 0), by: \.strokes)
+                candidates.append(Dictionary(grouping: autoCandidates(script, initial: index == 0), by: \.strokes)
                     .mapValues { $0.map(\.char) })
             }
         }

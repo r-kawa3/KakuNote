@@ -521,6 +521,57 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["lookup.kaku.tenkaku"].label, "9画")
     }
 
+    /// 設定画面で避けたい字を登録すると、自動の候補から外れ、チップに出る。固定した字は外れない。起動し直しても残る。
+    @MainActor
+    func testAvoidCharsFromSettings() throws {
+        let app = launchWithFreshSettings()
+        app.buttons["settings.open"].tap()
+        let input = app.textFields["settings.avoid.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        // 登録できない字は知らせて、登録しない
+        input.tap()
+        input.typeText("A")
+        app.buttons["settings.avoid.add"].tap()
+        XCTAssertTrue(app.staticTexts["settings.avoid.error"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["settings.avoid.remove.A"].exists)
+        input.typeText("\u{8}乙\n")
+        XCTAssertTrue(app.buttons["settings.avoid.remove.乙"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["settings.avoid.error"].exists)
+        app.buttons["settings.close"].tap()
+
+        // 2 文字・総画数 2 → 一一 だけ。チップに「避けたい字 1字を除外」
+        search(app, length: 2, total: "2")
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "1件")
+        XCTAssertTrue(app.buttons["一一"].exists)
+        XCTAssertTrue(app.staticTexts["避けたい字 1字を除外"].exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // 1 文字目を「乙」に固定したら、乙一 が出る
+        app.buttons["search.cell.1"].tap()
+        app.buttons["search.kind.fixed"].tap()
+        let fixed = app.textFields["search.fixed"]
+        XCTAssertTrue(fixed.waitForExistence(timeout: 5))
+        fixed.tap()
+        fixed.typeText("乙\n")
+        let submit = app.buttons["search.submit"]
+        submit.tap()
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "1件")
+        XCTAssertTrue(app.buttons["乙一"].exists)
+
+        // 起動し直しても残り、外すこともできる
+        app.terminate()
+        app.launchEnvironment["KAKUNOTE_SETTINGS_RESET"] = "0"
+        app.launch()
+        app.buttons["settings.open"].tap()
+        let remove = app.buttons["settings.avoid.remove.乙"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        // 行の中で字のチップが 1 つだけだと、ボタンの範囲が行全体として見えるので、チップの字を押す
+        remove.staticTexts["乙"].tap()
+        XCTAssertTrue(remove.waitForNonExistence(timeout: 5))
+    }
+
     /// 設定の保存先を一時ファイルにし、空の状態で起動する。
     @MainActor
     private func launchWithFreshSettings() -> XCUIApplication {

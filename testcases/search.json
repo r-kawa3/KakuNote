@@ -1277,6 +1277,235 @@
       }
     },
     {
+      "id": "avoid_auto_candidates",
+      "description": "避けたい字: 姓なし・2 文字・漢字・総画数 2 で「乙」を避ける → 一一 だけ",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2
+          ]
+        },
+        "avoid": [
+          "乙"
+        ]
+      },
+      "expected": {
+        "total": 1,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一一"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "avoid_fixed_kept",
+      "description": "避けたい字: 1 文字目を「乙」に固定したら、避けたい字でも使う。2 文字目の「乙」は外れる → 乙一",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "乙"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2
+          ]
+        },
+        "avoid": [
+          "乙"
+        ]
+      },
+      "expected": {
+        "total": 1,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "乙一"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "avoid_empties_stroke",
+      "description": "避けたい字: 1 画の漢字（一・乙）を全部避けると、1 画を選べなくなり 0 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            1
+          ]
+        },
+        "avoid": [
+          "一",
+          "乙"
+        ]
+      },
+      "expected": {
+        "total": 0,
+        "breakdown_count": 0,
+        "first_breakdowns": [],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "avoid_kana_and_odoriji",
+      "description": "避けたい字: 半角の「ｱ」は前処理で「ア」になって避けられる。々 も避けられる。姓あり（林）・2 文字・どれでも・人格 10",
+      "input": {
+        "sei": "林",
+        "positions": [
+          {
+            "kind": "strokes",
+            "strokes": 2,
+            "script": "any"
+          },
+          {
+            "kind": "strokes",
+            "strokes": 3,
+            "script": "any"
+          }
+        ],
+        "conditions": {
+          "jinkaku": [
+            10
+          ]
+        },
+        "avoid": [
+          "ｱ",
+          "々",
+          "乃"
+        ]
+      },
+      "expected": {
+        "total": 4371,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              2,
+              3
+            ],
+            "count": 4371
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 5,
+            "names": [
+              "丁万",
+              "丁丈",
+              "丁三",
+              "丁上",
+              "丁下"
+            ]
+          },
+          {
+            "offset": 40,
+            "limit": 40,
+            "names": [
+              "丁え",
+              "丁か",
+              "丁ぐ",
+              "丁け",
+              "丁さ",
+              "丁じ",
+              "丁す",
+              "丁せ",
+              "丁そ",
+              "丁ち",
+              "丁づ",
+              "丁に",
+              "丁ぬ",
+              "丁ぴ",
+              "丁べ",
+              "丁み",
+              "丁も",
+              "丁ゃ",
+              "丁や",
+              "丁ゅ",
+              "丁ゆ",
+              "丁ょ",
+              "丁よ",
+              "丁ら",
+              "丁る",
+              "丁れ",
+              "丁わ",
+              "丁ゞ",
+              "丁ゥ",
+              "丁ウ",
+              "丁ェ",
+              "丁エ",
+              "丁ォ",
+              "丁オ",
+              "丁キ",
+              "丁ケ",
+              "丁サ",
+              "丁シ",
+              "丁タ",
+              "丁チ"
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "error_seven_chars",
       "description": "名は 6 文字まで",
       "input": {

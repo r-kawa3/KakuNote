@@ -81,6 +81,55 @@ struct WaCheckbox: View {
     }
 }
 
+// 一覧の条件のチップや、設定画面の字の並びで使う
+/// チップを横に並べ、入りきらなければ次の行に折り返す。
+struct ChipFlow: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
+        let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
+        let width = rows.map(\.width).max() ?? 0
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(width: bounds.width, subviews: subviews) {
+            var x = bounds.minX
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> [Row] {
+        var rows: [Row] = [Row()]
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let last = rows.count - 1
+            let needed = rows[last].indices.isEmpty ? size.width : rows[last].width + spacing + size.width
+            if needed > width && !rows[last].indices.isEmpty {
+                rows.append(Row())
+            }
+            let current = rows.count - 1
+            rows[current].width = rows[current].indices.isEmpty ? size.width : rows[current].width + spacing + size.width
+            rows[current].height = max(rows[current].height, size.height)
+            rows[current].indices.append(index)
+        }
+        return rows
+    }
+}
+
 extension View {
     /// カードの面: 面の色、細い枠線、角丸。
     func waCard(cornerRadius: CGFloat = Wa.Metrics.cornerRadius) -> some View {

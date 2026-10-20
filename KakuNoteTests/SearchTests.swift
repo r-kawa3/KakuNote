@@ -128,6 +128,32 @@ final class SearchTests: XCTestCase {
 
     // MARK: - 共通テストケースの読み込み
 
+    /// 避けたい字は、コードポイントの並びで比べる（正準等価な字は別の字）。
+    func testAvoidComparesCodePoints() throws {
+        let plain = try NameSearch(
+            query: SearchQuery(sei: nil, positions: [.free(.kanji)], conditions: [.chikaku: [9]]), data: data, school: school
+        )
+        let compat = try NameSearch(
+            query: SearchQuery(sei: nil, positions: [.free(.kanji)], conditions: [.chikaku: [9]], avoid: ["\u{FA45}"]),
+            data: data, school: school
+        )
+        let names = compat.page(offset: 0, limit: compat.total).map { $0.unicodeScalars.map(\.value) }
+        XCTAssertTrue(names.contains([0x6D77]))
+        XCTAssertFalse(names.contains([0xFA45]))
+        let plainNames = plain.page(offset: 0, limit: plain.total).map { $0.unicodeScalars.map(\.value) }
+        XCTAssertEqual(compat.total, plain.total - (plainNames.contains([0xFA45]) ? 1 : 0))
+    }
+
+    /// 避けたい字がなかったころに保存した条件（お気に入り）も読める。
+    func testQueryWithoutAvoidDecodes() throws {
+        let json = #"{"sei":"田中","positions":[{"free":{"_0":"kanji"}}],"conditions":{"chikaku":[2]}}"#
+        let query = try JSONDecoder().decode(SearchQuery.self, from: Data(json.utf8))
+        XCTAssertEqual(query.avoid, [])
+        XCTAssertEqual(query.sei, "田中")
+        let encoded = try JSONEncoder().encode(SearchQuery(sei: nil, positions: [.free(.kanji)], conditions: [.chikaku: [2]], avoid: ["乙"]))
+        XCTAssertEqual(try JSONDecoder().decode(SearchQuery.self, from: encoded).avoid, ["乙"])
+    }
+
     static func searchCases() throws -> [[String: Any]] {
         let json = try SharedTestCases.load("search.json")
         return try XCTUnwrap(json["cases"] as? [[String: Any]])
@@ -176,7 +202,10 @@ final class SearchTests: XCTestCase {
         for (key, values) in try XCTUnwrap(input["conditions"] as? [String: [Int]]) {
             conditions[try XCTUnwrap(KakuKind(rawValue: key))] = Set(values)
         }
-        return SearchQuery(sei: input["sei"] as? String, positions: positions, conditions: conditions)
+        return SearchQuery(
+            sei: input["sei"] as? String, positions: positions, conditions: conditions,
+            avoid: input["avoid"] as? [String] ?? []
+        )
     }
 
     static func errorType(_ error: Error) -> String {

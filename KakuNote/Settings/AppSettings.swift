@@ -11,15 +11,19 @@ import Observation
 nonisolated struct SettingsValues: Codable, Equatable, Sendable {
     /// 登録した姓。空なら登録なし
     var sei = ""
+    /// 避けたい字（登録した順）。String の Set は正準等価な字を同じとみなすので、配列で持つ
+    var avoidChars: [String] = []
 
-    init(sei: String = "") {
+    init(sei: String = "", avoidChars: [String] = []) {
         self.sei = sei
+        self.avoidChars = avoidChars
     }
 
     // 項目を足しても古いファイルを読めるように、ない項目は初期値にする
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sei = try container.decodeIfPresent(String.self, forKey: .sei) ?? ""
+        avoidChars = try container.decodeIfPresent([String].self, forKey: .avoidChars) ?? []
     }
 }
 
@@ -59,13 +63,19 @@ final class AppSettings {
     var sei: String {
         didSet { save() }
     }
+    /// 避けたい字。すべての検索で、自動の候補から外す
+    private(set) var avoidChars: [String] {
+        didSet { save() }
+    }
     var errorMessage: String?
 
     private let store: SettingsStore?
 
     init(store: SettingsStore?) {
         self.store = store
-        sei = store?.load().sei ?? ""
+        let values = store?.load() ?? SettingsValues()
+        sei = values.sei
+        avoidChars = values.avoidChars
     }
 
     /// 登録した姓。前後の空白を除いて空なら nil
@@ -89,10 +99,40 @@ final class AppSettings {
         return AppSettings(store: url.map { SettingsStore(url: $0) })
     }
 
+    /// 入力した字（何文字でもよい）を、避けたい字に足す。足せない字があれば、知らせる文言を返して何も足さない。
+    @discardableResult
+    func addAvoidChars(_ text: String, data: KanjiData) -> String? {
+        let chars: [String]
+        do {
+            chars = try TextPreprocessor.characters(from: text)
+        } catch {
+            return "字だけを入れてください（途中の空白などは使えません）"
+        }
+        let unknown = chars.filter { data.info($0) == nil }
+        if !unknown.isEmpty {
+            return unknown.map { "「\($0)」" }.joined(separator: "、") + "は登録できません。漢字・ひらがな・カタカナを入れてください"
+        }
+        var added = avoidChars
+        for char in chars where !added.contains(where: { Self.sameChar($0, char) }) {
+            added.append(char)
+        }
+        avoidChars = added
+        return nil
+    }
+
+    func removeAvoidChar(_ char: String) {
+        avoidChars.removeAll { Self.sameChar($0, char) }
+    }
+
+    /// 正準等価な字（海 U+6D77 と U+FA45 など）を別の字として比べる
+    private static func sameChar(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.codePoints == rhs.codePoints
+    }
+
     private func save() {
         guard let store else { return }
         do {
-            try store.save(SettingsValues(sei: sei))
+            try store.save(SettingsValues(sei: sei, avoidChars: avoidChars))
             errorMessage = nil
         } catch {
             errorMessage = "設定を保存できませんでした"
@@ -116,4 +156,9 @@ enum SeiCheck {
 struct SeiMessage: Error {
     let text: String
     init(_ text: String) { self.text = text }
+}
+
+extension String {
+    /// コードポイントの並び。String の == と違い、正準等価な字を別のものとして区別できる
+    nonisolated var codePoints: [UInt32] { unicodeScalars.map(\.value) }
 }

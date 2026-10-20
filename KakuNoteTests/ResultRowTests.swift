@@ -45,6 +45,14 @@ final class ResultRowTests: XCTestCase {
         ])
     }
 
+    func testChipShowsAvoidCount() {
+        let query = SearchQuery(sei: nil, positions: [.free(.kanji)], conditions: [.chikaku: [2]], avoid: ["乙", "ア", "ぬ"])
+        XCTAssertEqual(SearchSummary.chips(for: query).last, .init(text: "避けたい字 3字を除外", isPrimary: false))
+        // 登録がないときは出ない
+        let plain = SearchQuery(sei: nil, positions: [.free(.kanji)], conditions: [.chikaku: [2]])
+        XCTAssertFalse(SearchSummary.chips(for: plain).contains { $0.text.contains("避けたい字") })
+    }
+
     func testCandidatesCarryStrokes() throws {
         let search = try NameSearch(
             query: SearchQuery(sei: nil, positions: [.fixed("陽"), .free(.kanji)], conditions: [.chikaku: [13]]),

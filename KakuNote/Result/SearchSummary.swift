@@ -43,6 +43,9 @@ nonisolated enum SearchSummary {
                 }
             }
         }
+        if !query.avoid.isEmpty {
+            chips.append(Chip(text: "避けたい字 \(query.avoid.count)字を除外", isPrimary: false))
+        }
         return chips
     }
 
