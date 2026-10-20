@@ -102,6 +102,13 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(settings.useChars, ["陽", "翔"])
     }
 
+    func testReadingPrefixDefaultsOffAndPersists() {
+        let settings = AppSettings(store: SettingsStore(url: url))
+        XCTAssertFalse(settings.readingPrefix)
+        settings.readingPrefix = true
+        XCTAssertTrue(AppSettings(store: SettingsStore(url: url)).readingPrefix)
+    }
+
     func testSeiCheckTenkakuAndUnknownStrokes() throws {
         let data = try KanjiData.bundled.get()
         guard case .success(let value) = SeiCheck.tenkaku(of: "田中", data: data) else {

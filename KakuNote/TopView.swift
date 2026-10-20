@@ -382,7 +382,8 @@ struct TopView: View {
         query = SearchQuery(
             sei: sei, positions: positionConditions, conditions: conditions,
             avoid: settings.avoidChars, use: settings.useChars,
-            reading: readingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : readingText
+            reading: readingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : readingText,
+            readingPrefix: settings.readingPrefix
         )
     }
 

@@ -622,6 +622,51 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["読み「るー」"].exists)
     }
 
+    /// 設定の「読みの頭の部分も使う」をオンにすると、心春 が「こはる」で出る。オフ（初期値）では出ない。
+    @MainActor
+    func testReadingPrefixFromSettings() throws {
+        let app = launchWithFreshSettings()
+        // 1 文字目を「心」、2 文字目を「春」に固定し、読み「こはる」
+        for (cell, char) in [("search.cell.1", "心"), ("search.cell.2", "春")] {
+            app.buttons[cell].tap()
+            app.buttons["search.kind.fixed"].tap()
+            let fixed = app.textFields["search.fixed"]
+            XCTAssertTrue(fixed.waitForExistence(timeout: 5))
+            fixed.tap()
+            fixed.typeText(char + "\n")
+        }
+        let reading = app.textFields["search.reading"]
+        reading.tap()
+        reading.typeText("こはる\n")
+
+        // オフ（初期値）では出ない
+        search(app, length: 2, total: "13")
+        XCTAssertTrue(app.staticTexts["該当する名前がありません"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // 設定でオンにする
+        let open = app.buttons["settings.open"]
+        for _ in 0..<3 where !open.isHittable {
+            app.swipeDown()
+        }
+        open.tap()
+        let toggle = app.switches["settings.readingPrefix"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "0")
+        // スイッチの部分（右の端）を押す
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+        app.buttons["settings.close"].tap()
+
+        let submit = app.buttons["search.submit"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        submit.tap()
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "1件")
+        XCTAssertTrue(app.buttons["心春"].exists)
+        XCTAssertTrue(app.staticTexts["読みの頭の部分も使う"].exists)
+    }
+
     /// 設定の保存先を一時ファイルにし、空の状態で起動する。
     @MainActor
     private func launchWithFreshSettings() -> XCUIApplication {

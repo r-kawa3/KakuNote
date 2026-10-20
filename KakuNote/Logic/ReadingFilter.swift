@@ -33,6 +33,17 @@ nonisolated enum Reading {
         (0x30A1...0x30F6).contains(code) || code == 0x30FD || code == 0x30FE ? code - 0x60 : code
     }
 
+    /// 読みの頭の部分で、手前で区切らない小さい字
+    static let smallKana = Set("ぁぃぅぇぉっゃゅょゎゕゖ".unicodeScalars.map(\.value))
+
+    /// 読みの頭の部分（先頭の 1 文字以上）。小さい字の手前では区切らない。読みそのものも含む。
+    static func prefixes(of reading: [UInt32]) -> [[UInt32]] {
+        (1...max(reading.count, 1)).compactMap { k in
+            guard k <= reading.count, k == reading.count || !smallKana.contains(reading[k]) else { return nil }
+            return Array(reading[..<k])
+        }
+    }
+
     /// 連濁: 1 文字目の替え方（か〜こ → が〜ご、さ〜そ → ざ〜ぞ、た〜と → だ〜ど、は〜ほ → ば〜ぼ・ぱ〜ぽ）
     static let rendaku: [UInt32: [UInt32]] = {
         var table: [UInt32: [UInt32]] = [:]
@@ -53,6 +64,8 @@ nonisolated enum Reading {
 nonisolated struct ReadingTable: Sendable {
     /// 名の読み（ひらがなのコードポイント）
     let reading: [UInt32]
+    /// 漢字の読みの頭の部分も使うか
+    let usesPrefixes: Bool
     /// spans[setID * 2 + (連濁ありなら 1)][s]: 読みの s 文字目から始めたときに、担い終われる位置の集合
     private(set) var spans: [[UInt64]] = []
     private var setIDs: [Set<[UInt32]>: Int] = [:]
@@ -60,8 +73,9 @@ nonisolated struct ReadingTable: Sendable {
     /// 々 を表すキー（直前の字の読みを使う）
     static let odoriji = -1
 
-    init(reading: [UInt32]) {
+    init(reading: [UInt32], usesPrefixes: Bool = false) {
         self.reading = reading
+        self.usesPrefixes = usesPrefixes
     }
 
     /// 位置 position（0 始まり）の字 info のキー。々 は odoriji。どこも担えない字は nil（候補から外す）。
@@ -72,7 +86,8 @@ nonisolated struct ReadingTable: Sendable {
         }
         let readings: Set<[UInt32]>
         if info.script == .kanji {
-            readings = Set((data.readings[scalar] ?? []).map { $0.unicodeScalars.map(\.value) })
+            let own = (data.readings[scalar] ?? []).map { $0.unicodeScalars.map(\.value) }
+            readings = Set(usesPrefixes ? own.flatMap(Reading.prefixes) : own)
         } else {
             readings = [[Reading.hiragana(scalar.value)]]
         }

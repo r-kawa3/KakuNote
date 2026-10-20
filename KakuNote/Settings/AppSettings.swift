@@ -15,11 +15,14 @@ nonisolated struct SettingsValues: Codable, Equatable, Sendable {
     var avoidChars: [String] = []
     /// 使いたい字（登録した順）
     var useChars: [String] = []
+    /// 読みの頭の部分も使う（初期値はオフ）
+    var readingPrefix = false
 
-    init(sei: String = "", avoidChars: [String] = [], useChars: [String] = []) {
+    init(sei: String = "", avoidChars: [String] = [], useChars: [String] = [], readingPrefix: Bool = false) {
         self.sei = sei
         self.avoidChars = avoidChars
         self.useChars = useChars
+        self.readingPrefix = readingPrefix
     }
 
     // 項目を足しても古いファイルを読めるように、ない項目は初期値にする
@@ -28,6 +31,7 @@ nonisolated struct SettingsValues: Codable, Equatable, Sendable {
         sei = try container.decodeIfPresent(String.self, forKey: .sei) ?? ""
         avoidChars = try container.decodeIfPresent([String].self, forKey: .avoidChars) ?? []
         useChars = try container.decodeIfPresent([String].self, forKey: .useChars) ?? []
+        readingPrefix = try container.decodeIfPresent(Bool.self, forKey: .readingPrefix) ?? false
     }
 }
 
@@ -83,6 +87,10 @@ final class AppSettings {
     private(set) var useChars: [String] {
         didSet { save() }
     }
+    /// 読みの頭の部分も使う（例: 心「こころ」を「こ」とも読む）。候補が大きく増えるので、初期値はオフ
+    var readingPrefix: Bool {
+        didSet { save() }
+    }
     var errorMessage: String?
 
     private let store: SettingsStore?
@@ -93,6 +101,7 @@ final class AppSettings {
         sei = values.sei
         avoidChars = values.avoidChars
         useChars = values.useChars
+        readingPrefix = values.readingPrefix
     }
 
     /// 登録した姓。前後の空白を除いて空なら nil
@@ -170,7 +179,9 @@ final class AppSettings {
     private func save() {
         guard let store else { return }
         do {
-            try store.save(SettingsValues(sei: sei, avoidChars: avoidChars, useChars: useChars))
+            try store.save(SettingsValues(
+                sei: sei, avoidChars: avoidChars, useChars: useChars, readingPrefix: readingPrefix
+            ))
             errorMessage = nil
         } catch {
             errorMessage = "設定を保存できませんでした"

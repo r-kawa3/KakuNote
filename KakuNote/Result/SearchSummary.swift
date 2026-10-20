@@ -29,6 +29,9 @@ nonisolated enum SearchSummary {
         }
         if let reading = query.reading?.trimmingCharacters(in: .whitespacesAndNewlines), !reading.isEmpty {
             chips.append(Chip(text: "読み「\(reading)」", isPrimary: false))
+            if query.readingPrefix {
+                chips.append(Chip(text: "読みの頭の部分も使う", isPrimary: false))
+            }
         }
         chips.append(Chip(text: "\(query.positions.count)文字", isPrimary: false))
         for (index, position) in query.positions.enumerated() {

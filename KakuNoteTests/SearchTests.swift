@@ -235,6 +235,14 @@ final class SearchTests: XCTestCase {
         return go(0, 0)
     }
 
+    /// 読みの頭の部分: 小さい字の手前では区切らない。
+    func testReadingPrefixes() {
+        let shou = "しょう".unicodeScalars.map(\.value)
+        XCTAssertEqual(Reading.prefixes(of: shou).map { String(String.UnicodeScalarView($0.compactMap(Unicode.Scalar.init))) }, ["しょ", "しょう"])
+        let kokoro = "こころ".unicodeScalars.map(\.value)
+        XCTAssertEqual(Reading.prefixes(of: kokoro).count, 3)
+    }
+
     /// 読みがあれば、6 文字でも速く数えられる。
     func testReadingSixCharsIsFast() throws {
         let query = SearchQuery(
@@ -320,7 +328,7 @@ final class SearchTests: XCTestCase {
         return SearchQuery(
             sei: input["sei"] as? String, positions: positions, conditions: conditions,
             avoid: input["avoid"] as? [String] ?? [], use: input["use"] as? [String] ?? [],
-            reading: input["reading"] as? String
+            reading: input["reading"] as? String, readingPrefix: input["reading_prefix"] as? Bool ?? false
         )
     }
 

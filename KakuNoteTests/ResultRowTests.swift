@@ -70,6 +70,11 @@ final class ResultRowTests: XCTestCase {
             .init(text: "読み「はると」", isPrimary: false),
         ])
         XCTAssertEqual(ConditionSummary.text(for: query), "2文字・読み「はると」・総格 24")
+        XCTAssertFalse(SearchSummary.chips(for: query).contains { $0.text == "読みの頭の部分も使う" })
+
+        var prefix = query
+        prefix.readingPrefix = true
+        XCTAssertTrue(SearchSummary.chips(for: prefix).contains { $0.text == "読みの頭の部分も使う" })
     }
 
     func testCandidatesCarryStrokes() throws {

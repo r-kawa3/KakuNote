@@ -2426,6 +2426,308 @@
       }
     },
     {
+      "id": "reading_prefix_off",
+      "description": "読みの頭の部分を使わないとき: 心春（こころ + はる）は「こはる」にならない",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "心"
+          },
+          {
+            "kind": "fixed",
+            "char": "春"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            13
+          ]
+        },
+        "reading": "こはる"
+      },
+      "expected": {
+        "total": 0,
+        "breakdown_count": 0,
+        "first_breakdowns": [],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_prefix_on",
+      "description": "読みの頭の部分を使うとき: 心（こころ → こ）+ 春（はる）で「こはる」",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "心"
+          },
+          {
+            "kind": "fixed",
+            "char": "春"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            13
+          ]
+        },
+        "reading": "こはる",
+        "reading_prefix": true
+      },
+      "expected": {
+        "total": 1,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              4,
+              9
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "心春"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_prefix_small_kana",
+      "description": "読みの頭の部分: 翔「しょう」は「しょ」にはなるが、小さい字の手前の「し」にはならない → しょま は 翔真、しま は 0 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "翔"
+          },
+          {
+            "kind": "fixed",
+            "char": "真"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            22
+          ]
+        },
+        "reading": "しょま",
+        "reading_prefix": true
+      },
+      "expected": {
+        "total": 1,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              12,
+              10
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "翔真"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_prefix_small_kana_cut",
+      "description": "読みの頭の部分: 翔「しょう」を「し」とは読まない → 0 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "翔"
+          },
+          {
+            "kind": "fixed",
+            "char": "真"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            22
+          ]
+        },
+        "reading": "しま",
+        "reading_prefix": true
+      },
+      "expected": {
+        "total": 0,
+        "breakdown_count": 0,
+        "first_breakdowns": [],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_prefix_free",
+      "description": "読みの頭の部分: 姓なし・2 文字・漢字・総画数 13・読み「こはる」で頭の部分を使う。心春 が入る",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            13
+          ]
+        },
+        "reading": "こはる",
+        "reading_prefix": true
+      },
+      "expected": {
+        "total": 163,
+        "breakdown_count": 5,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              2,
+              11
+            ],
+            "count": 3
+          },
+          {
+            "strokes": [
+              4,
+              9
+            ],
+            "count": 22
+          },
+          {
+            "strokes": [
+              5,
+              8
+            ],
+            "count": 68
+          },
+          {
+            "strokes": [
+              8,
+              5
+            ],
+            "count": 39
+          },
+          {
+            "strokes": [
+              9,
+              4
+            ],
+            "count": 31
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 30,
+            "names": [
+              "九問",
+              "九張",
+              "九脩",
+              "云春",
+              "云美",
+              "今春",
+              "今美",
+              "公春",
+              "公美",
+              "勾春",
+              "勾美",
+              "匂春",
+              "匂美",
+              "区春",
+              "区美",
+              "孔春",
+              "孔美",
+              "心春",
+              "心美",
+              "戸春",
+              "戸美",
+              "日春",
+              "日美",
+              "木春",
+              "木美",
+              "乎孟",
+              "乎明",
+              "乎東",
+              "乎治",
+              "仔孟"
+            ]
+          },
+          {
+            "offset": 30,
+            "limit": 30,
+            "names": [
+              "仔明",
+              "仔東",
+              "仔治",
+              "処孟",
+              "処明",
+              "処東",
+              "処治",
+              "功孟",
+              "功明",
+              "功東",
+              "功治",
+              "去孟",
+              "去明",
+              "去東",
+              "去治",
+              "古孟",
+              "古明",
+              "古東",
+              "古治",
+              "可孟",
+              "可明",
+              "可東",
+              "可治",
+              "史孟",
+              "史明",
+              "史東",
+              "史治",
+              "尻孟",
+              "尻明",
+              "尻東"
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "error_invalid_reading",
       "description": "読み: ひらがな・カタカナ・「ー」以外が入っていたらエラー",
       "input": {

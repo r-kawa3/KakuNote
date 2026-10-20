@@ -63,11 +63,13 @@ nonisolated struct SearchQuery: Hashable, Codable, Sendable {
     var use: [String] = []
     /// 名前全体の読み（ひらがな。カタカナはひらがなに直して比べる）。nil や空なら絞り込まない（仕様書 search.md「読み」）
     var reading: String?
+    /// 読みの頭の部分も使う（例: 心「こころ」を「こ」とも読む。仕様書 search.md「読みの頭の部分」）
+    var readingPrefix = false
 }
 
 extension SearchQuery {
     private enum CodingKeys: String, CodingKey {
-        case sei, positions, conditions, avoid, use, reading
+        case sei, positions, conditions, avoid, use, reading, readingPrefix
     }
 
     // 避けたい字がなかったころに保存した条件（お気に入り）も読めるようにする
@@ -79,6 +81,7 @@ extension SearchQuery {
         avoid = try container.decodeIfPresent([String].self, forKey: .avoid) ?? []
         use = try container.decodeIfPresent([String].self, forKey: .use) ?? []
         reading = try container.decodeIfPresent(String.self, forKey: .reading)
+        readingPrefix = try container.decodeIfPresent(Bool.self, forKey: .readingPrefix) ?? false
     }
 }
 
@@ -174,7 +177,9 @@ nonisolated struct NameSearch: Sendable {
         }
 
         // 読み。どの部分も担えない字は、はじめから候補から外す（結果は変わらない）
-        var readingTable = try query.reading.flatMap { try Reading.normalize($0) }.map { ReadingTable(reading: $0) }
+        var readingTable = try query.reading.flatMap { try Reading.normalize($0) }.map {
+            ReadingTable(reading: $0, usesPrefixes: query.readingPrefix)
+        }
 
         // 位置ごとの候補の字
         var candidates: [[Int: [String]]] = []

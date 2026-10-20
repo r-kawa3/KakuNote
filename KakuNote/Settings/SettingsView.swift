@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// 設定画面: 姓の登録、使いたい字、避けたい字、「このアプリについて」。
+/// 設定画面: 姓の登録、使いたい字、避けたい字、読みの頭の部分、「このアプリについて」。
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
@@ -43,6 +43,17 @@ struct SettingsView: View {
                     list: .avoid, title: "避けたい字", prompt: "例：乙", identifier: "settings.avoid", data: data,
                     footer: "自由・画数指定の位置の候補から外します。自分で固定した字は外しません。漢字・ひらがな・カタカナを、何文字でもまとめて入れられます。"
                 )
+
+                Section {
+                    Toggle("読みの頭の部分も使う", isOn: $settings.readingPrefix)
+                        .tint(Wa.accent)
+                        .accessibilityIdentifier("settings.readingPrefix")
+                } header: {
+                    Text("読み")
+                } footer: {
+                    Text("「探す」で読みを入れたとき、字の読みの先頭の部分も認めます（例：心「こころ」→「こ」で、心春を「こはる」）。小さい字（ゃ・ゅ・ょ など）の手前では区切りません。候補が大きく増えます。")
+                }
+                .waRow()
 
                 if let message = settings.errorMessage {
                     Text(message)
