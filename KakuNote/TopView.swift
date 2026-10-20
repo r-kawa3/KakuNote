@@ -343,7 +343,10 @@ struct TopView: View {
             positionConditions.append(condition)
         }
         formError = nil
-        query = SearchQuery(sei: sei, positions: positionConditions, conditions: conditions, avoid: settings.avoidChars)
+        query = SearchQuery(
+            sei: sei, positions: positionConditions, conditions: conditions,
+            avoid: settings.avoidChars, use: settings.useChars
+        )
     }
 
     /// 「24, 31」「24、31」「24 31」のような入力から、正の整数を取り出す。

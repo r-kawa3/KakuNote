@@ -5,14 +5,11 @@
 
 import SwiftUI
 
-/// 設定画面: 姓の登録、避けたい字、「このアプリについて」。
+/// 設定画面: 姓の登録、使いたい字、避けたい字、「このアプリについて」。
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
     @State private var data: KanjiData?
-    /// 避けたい字の入力欄
-    @State private var avoidInput = ""
-    @State private var avoidMessage: String?
 
     var body: some View {
         @Bindable var settings = settings
@@ -38,7 +35,14 @@ struct SettingsView: View {
                 }
                 .waRow()
 
-                avoidSection
+                CharListSection(
+                    list: .use, title: "使いたい字", prompt: "例：陽", identifier: "settings.use", data: data,
+                    footer: "どれか 1 字以上が名前のどこかに入っている候補だけを出します。名前に使える字だけを登録できます。避けたい字にも入っている字は、使いたい字を優先します。"
+                )
+                CharListSection(
+                    list: .avoid, title: "避けたい字", prompt: "例：乙", identifier: "settings.avoid", data: data,
+                    footer: "自由・画数指定の位置の候補から外します。自分で固定した字は外しません。漢字・ひらがな・カタカナを、何文字でもまとめて入れられます。"
+                )
 
                 if let message = settings.errorMessage {
                     Text(message)
@@ -71,73 +75,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 避けたい字
-
-    private var avoidSection: some View {
-        Section {
-            HStack(spacing: 10) {
-                TextField("", text: $avoidInput, prompt: Text("例：乙").foregroundStyle(Wa.placeholder))
-                    .font(Wa.mincho(20))
-                    .submitLabel(.done)
-                    .onSubmit(addAvoid)
-                    .accessibilityLabel("避けたい字")
-                    .accessibilityIdentifier("settings.avoid.input")
-                Button("追加", action: addAvoid)
-                    .font(Wa.gothic(.subheadline, weight: .bold))
-                    .foregroundStyle(Wa.accent)
-                    .buttonStyle(.borderless)
-                    .disabled(data == nil || avoidInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .accessibilityIdentifier("settings.avoid.add")
-            }
-            .frame(minHeight: 44)
-            if let avoidMessage {
-                Text(avoidMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Wa.seal)
-                    .accessibilityIdentifier("settings.avoid.error")
-            }
-            if !settings.avoidChars.isEmpty {
-                ChipFlow(spacing: 8) {
-                    // 正準等価な字が同じ id にならないよう、コードポイントの並びで区別する
-                    ForEach(settings.avoidChars, id: \.codePoints) { char in
-                        Button {
-                            settings.removeAvoidChar(char)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(char)
-                                    .font(Wa.mincho(18, bold: true))
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(Wa.secondaryText)
-                            }
-                            .padding(.horizontal, 10)
-                            .frame(minHeight: 36)
-                            .background(Wa.surfaceMuted, in: Capsule())
-                        }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(Wa.ink)
-                        .accessibilityLabel("「\(char)」を外す")
-                        .accessibilityIdentifier("settings.avoid.remove.\(char)")
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-        } header: {
-            Text("避けたい字")
-        } footer: {
-            Text("自由・画数指定の位置の候補から外します。自分で固定した字は外しません。漢字・ひらがな・カタカナを、何文字でもまとめて入れられます。")
-        }
-        .waRow()
-    }
-
-    private func addAvoid() {
-        guard let data, !avoidInput.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        avoidMessage = settings.addAvoidChars(avoidInput, data: data)
-        if avoidMessage == nil {
-            avoidInput = ""
-        }
-    }
-
     /// 登録した姓の天格。画数がわからない字があれば、それと分かるように出す。
     @ViewBuilder
     private var seiStatus: some View {
@@ -158,6 +95,87 @@ struct SettingsView: View {
                     .foregroundStyle(Wa.seal)
                     .accessibilityIdentifier("settings.sei.error")
             }
+        }
+    }
+}
+
+/// 設定で登録する字の並び（使いたい字・避けたい字）の欄: 入力して「追加」、登録した字はチップで並び、押すと外れる。
+private struct CharListSection: View {
+    let list: CharList
+    let title: String
+    let prompt: String
+    /// UI テスト用の識別子の頭（例: settings.avoid）
+    let identifier: String
+    let data: KanjiData?
+    let footer: String
+
+    @Environment(AppSettings.self) private var settings
+    @State private var input = ""
+    @State private var message: String?
+
+    var body: some View {
+        Section {
+            HStack(spacing: 10) {
+                TextField("", text: $input, prompt: Text(prompt).foregroundStyle(Wa.placeholder))
+                    .font(Wa.mincho(20))
+                    .submitLabel(.done)
+                    .onSubmit(add)
+                    .accessibilityLabel(title)
+                    .accessibilityIdentifier("\(identifier).input")
+                Button("追加", action: add)
+                    .font(Wa.gothic(.subheadline, weight: .bold))
+                    .foregroundStyle(Wa.accent)
+                    .buttonStyle(.borderless)
+                    .disabled(data == nil || input.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("\(identifier).add")
+            }
+            .frame(minHeight: 44)
+            if let message {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(Wa.seal)
+                    .accessibilityIdentifier("\(identifier).error")
+            }
+            let chars = settings.chars(list)
+            if !chars.isEmpty {
+                ChipFlow(spacing: 8) {
+                    // 正準等価な字が同じ id にならないよう、コードポイントの並びで区別する
+                    ForEach(chars, id: \.codePoints) { char in
+                        Button {
+                            settings.removeChar(char, from: list)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(char)
+                                    .font(Wa.mincho(18, bold: true))
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(Wa.secondaryText)
+                            }
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 36)
+                            .background(Wa.surfaceMuted, in: Capsule())
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(Wa.ink)
+                        .accessibilityLabel("「\(char)」を外す")
+                        .accessibilityIdentifier("\(identifier).remove.\(char)")
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        } header: {
+            Text(title)
+        } footer: {
+            Text(footer)
+        }
+        .waRow()
+    }
+
+    private func add() {
+        guard let data, !input.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        message = settings.addChars(input, to: list, data: data)
+        if message == nil {
+            input = ""
         }
     }
 }

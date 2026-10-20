@@ -144,6 +144,32 @@ final class SearchTests: XCTestCase {
         XCTAssertEqual(compat.total, plain.total - (plainNames.contains([0xFA45]) ? 1 : 0))
     }
 
+    /// 使いたい字は、全部の候補から「使いたい字を含まないもの」を飛ばしたのと同じ。数・順番・ページ送りが合う。
+    func testUseMatchesFilteredListing() throws {
+        let positions: [PositionCondition] = [.free(.kanji), .free(.hiragana), .free(.kanji)]
+        let plain = try NameSearch(
+            query: SearchQuery(sei: nil, positions: positions, conditions: [.chikaku: [12]]), data: data, school: school
+        )
+        let use = ["一", "ぬ", "乃"]
+        let searched = try NameSearch(
+            query: SearchQuery(sei: nil, positions: positions, conditions: [.chikaku: [12]], avoid: ["乃"], use: use),
+            data: data, school: school
+        )
+        let usePoints = Set(use.map(\.codePoints))
+        let expected = plain.page(offset: 0, limit: plain.total)
+            .filter { name in name.unicodeScalars.contains { usePoints.contains([$0.value]) } }
+            .map(\.codePoints)
+        XCTAssertEqual(searched.total, expected.count)
+        XCTAssertEqual(searched.page(offset: 0, limit: searched.total).map(\.codePoints), expected)
+        for offset in [0, 7, expected.count - 4] {
+            XCTAssertEqual(
+                searched.page(offset: offset, limit: 6).map(\.codePoints),
+                Array(expected[offset..<min(offset + 6, expected.count)])
+            )
+        }
+        XCTAssertTrue(searched.breakdowns.allSatisfy { $0.count > 0 })
+    }
+
     /// 避けたい字がなかったころに保存した条件（お気に入り）も読める。
     func testQueryWithoutAvoidDecodes() throws {
         let json = #"{"sei":"田中","positions":[{"free":{"_0":"kanji"}}],"conditions":{"chikaku":[2]}}"#
@@ -204,7 +230,7 @@ final class SearchTests: XCTestCase {
         }
         return SearchQuery(
             sei: input["sei"] as? String, positions: positions, conditions: conditions,
-            avoid: input["avoid"] as? [String] ?? []
+            avoid: input["avoid"] as? [String] ?? [], use: input["use"] as? [String] ?? []
         )
     }
 

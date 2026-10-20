@@ -43,6 +43,9 @@ nonisolated enum SearchSummary {
                 }
             }
         }
+        if !query.use.isEmpty {
+            chips.append(Chip(text: "使いたい字: " + query.use.joined(separator: "・"), isPrimary: false))
+        }
         if !query.avoid.isEmpty {
             chips.append(Chip(text: "避けたい字 \(query.avoid.count)字を除外", isPrimary: false))
         }

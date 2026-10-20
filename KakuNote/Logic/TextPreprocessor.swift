@@ -75,3 +75,8 @@ nonisolated enum TextPreprocessor {
         (0xFF61...0xFF9F).contains(scalar.value)
     }
 }
+
+extension String {
+    /// コードポイントの並び。String の == と違い、正準等価な字を別のものとして区別できる
+    nonisolated var codePoints: [UInt32] { unicodeScalars.map(\.value) }
+}

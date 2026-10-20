@@ -53,6 +53,16 @@ final class ResultRowTests: XCTestCase {
         XCTAssertFalse(SearchSummary.chips(for: plain).contains { $0.text.contains("避けたい字") })
     }
 
+    func testChipShowsUseChars() {
+        let query = SearchQuery(
+            sei: nil, positions: [.free(.kanji)], conditions: [.chikaku: [12]], avoid: ["乙"], use: ["陽", "葵", "翔"]
+        )
+        XCTAssertEqual(Array(SearchSummary.chips(for: query).suffix(2)), [
+            .init(text: "使いたい字: 陽・葵・翔", isPrimary: false),
+            .init(text: "避けたい字 1字を除外", isPrimary: false),
+        ])
+    }
+
     func testCandidatesCarryStrokes() throws {
         let search = try NameSearch(
             query: SearchQuery(sei: nil, positions: [.fixed("陽"), .free(.kanji)], conditions: [.chikaku: [13]]),

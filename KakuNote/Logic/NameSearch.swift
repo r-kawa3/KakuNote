@@ -58,11 +58,14 @@ nonisolated struct SearchQuery: Hashable, Codable, Sendable {
     /// 避けたい字。固定でない位置の候補から外す（仕様書 search.md「避けたい字」）。
     /// String の Set は正準等価な字を同じとみなすので、配列で持つ
     var avoid: [String] = []
+    /// 使いたい字。どれか 1 つ以上が名のどこかに入っている候補だけを残す（仕様書 search.md「使いたい字」）。
+    /// 避けたい字にも入っていたら、使いたい字を優先する
+    var use: [String] = []
 }
 
 extension SearchQuery {
     private enum CodingKeys: String, CodingKey {
-        case sei, positions, conditions, avoid
+        case sei, positions, conditions, avoid, use
     }
 
     // 避けたい字がなかったころに保存した条件（お気に入り）も読めるようにする
@@ -72,6 +75,7 @@ extension SearchQuery {
         positions = try container.decode([PositionCondition].self, forKey: .positions)
         conditions = try container.decode([KakuKind: Set<Int>].self, forKey: .conditions)
         avoid = try container.decodeIfPresent([String].self, forKey: .avoid) ?? []
+        use = try container.decodeIfPresent([String].self, forKey: .use) ?? []
     }
 }
 
@@ -132,6 +136,8 @@ nonisolated struct NameSearch: Sendable {
 
     /// 位置ごと: 画数 → その画数の候補の字（仕様の順番）
     private let candidates: [[Int: [String]]]
+    /// 使いたい字（コードポイントの並び）。空なら条件なし
+    private let used: Set<[UInt32]>
 
     init(query: SearchQuery, data: KanjiData, school: any KakuSchool) throws {
         guard (1...Self.maxLength).contains(query.positions.count) else { throw SearchError.invalidLength }
@@ -150,11 +156,12 @@ nonisolated struct NameSearch: Sendable {
             seiStrokes = nil
         }
 
-        // 避けたい字。前処理してから、コードポイントの並びで比べる
-        let avoided = Set(try query.avoid.flatMap { try Self.characters($0) }.map { $0.unicodeScalars.map(\.value) })
+        // 避けたい字・使いたい字。前処理してから、コードポイントの並びで比べる。両方に入っていたら使いたい字を優先する
+        let used = Set(try query.use.flatMap { try Self.characters($0) }.map(\.codePoints))
+        let avoided = Set(try query.avoid.flatMap { try Self.characters($0) }.map(\.codePoints)).subtracting(used)
         func autoCandidates(_ script: ScriptFilter, initial: Bool) -> [CharInfo] {
             let chars = data.autoCandidates(script: script, initial: initial)
-            return avoided.isEmpty ? chars : chars.filter { !avoided.contains($0.char.unicodeScalars.map(\.value)) }
+            return avoided.isEmpty ? chars : chars.filter { !avoided.contains($0.char.codePoints) }
         }
 
         // 位置ごとの候補の字
@@ -175,11 +182,16 @@ nonisolated struct NameSearch: Sendable {
             }
         }
         self.candidates = candidates
+        self.used = used
 
         // 条件を満たす内訳を、辞書式の小さい順に求める。
         // 条件を満たせないとわかった途中の組み合わせは打ち切る（仕様書 search.md「内訳の列挙の打ち切り」）
         let strokeValues = candidates.map { $0.keys.sorted() }
-        let counts = zip(candidates, strokeValues).map { group, values in values.map { group[$0]!.count } }
+        // 位置ごと・画数ごとの、候補の字の数と、そのうち使いたい字の数
+        let counts = zip(candidates, strokeValues).map { group, values in values.map { Int128(group[$0]!.count) } }
+        let usedCounts = zip(candidates, strokeValues).map { group, values in
+            values.map { Int128(used.isEmpty ? 0 : group[$0]!.filter { used.contains($0.codePoints) }.count) }
+        }
         let length = strokeValues.count
         var breakdownStrokes: [Int] = []
         var breakdownCounts: [Int] = []
@@ -193,14 +205,19 @@ nonisolated struct NameSearch: Sendable {
             // 深さごとの「途中までの格の値の増え方」。全部の位置を決めると、各格の値そのものになる
             var partials = [[Int]](repeating: [Int](repeating: 0, count: bounds.itemCount), count: length + 1)
             var current = [Int](repeating: 0, count: length)
-            func visit(_ index: Int, _ count: Int) throws {
+            // 内訳の途中までの「全部の組み合わせの数」と「使いたい字を 1 つも含まない組み合わせの数」。
+            // 6 文字では 64 ビットをあふれうるので、128 ビットで正確に数える
+            func visit(_ index: Int, _ full: Int128, _ without: Int128) throws {
                 if index == length {
+                    let count = used.isEmpty ? full : full - without
+                    // 使いたい字を含む候補がない内訳は残さない
+                    guard count > 0 else { return }
                     // 内訳 1 つの件数だけで上限を超える場合も、ここで止める
-                    guard count <= Self.maxTotal else { throw SearchError.tooManyResults }
+                    guard count <= Int128(Self.maxTotal) else { throw SearchError.tooManyResults }
                     breakdownStrokes.append(contentsOf: current)
-                    breakdownCounts.append(count)
+                    breakdownCounts.append(Int(count))
                     // 上限を超えたら、残りをたどらずにすぐやめる
-                    total += count
+                    total += Int(count)
                     guard total <= Self.maxTotal else { throw SearchError.tooManyResults }
                     return
                 }
@@ -210,11 +227,10 @@ nonisolated struct NameSearch: Sendable {
                         continue
                     }
                     current[index] = value
-                    let (product, overflow) = count.multipliedReportingOverflow(by: counts[index][k])
-                    try visit(index + 1, overflow ? Self.maxTotal + 1 : min(product, Self.maxTotal + 1))
+                    try visit(index + 1, full * counts[index][k], without * (counts[index][k] - usedCounts[index][k]))
                 }
             }
-            try visit(0, 1)
+            try visit(0, 1, 1)
         }
         self.length = length
         self.seiStrokes = seiStrokes
@@ -240,8 +256,10 @@ nonisolated struct NameSearch: Sendable {
             }
             let strokes = Array(breakdownStrokes[(i * length)..<((i + 1) * length)])
             let lists = (0..<length).map { candidates[$0][strokes[$0]]! }
+            let flags = used.isEmpty ? [] : lists.map { $0.map { used.contains($0.codePoints) } }
             while index < count && result.count < limit {
-                result.append(Candidate(name: Self.combination(lists, at: index), strokes: strokes))
+                let name = used.isEmpty ? Self.combination(lists, at: index) : Self.combination(lists, usedFlags: flags, at: index)
+                result.append(Candidate(name: name, strokes: strokes))
                 index += 1
             }
             if result.count >= limit { break }
@@ -330,6 +348,35 @@ nonisolated struct NameSearch: Sendable {
         for i in stride(from: lists.count - 1, through: 0, by: -1) {
             chars[i] = lists[i][n % lists[i].count]
             n /= lists[i].count
+        }
+        return chars.joined()
+    }
+
+    /// 使いたい字の条件を満たす組み合わせのうち、n 番目（0 始まり）。
+    /// 位置 1 から順に、「その字を選んだとき、残りの位置で条件を満たす組み合わせの数」を数えて字を決める。
+    private static func combination(_ lists: [[String]], usedFlags: [[Bool]], at n: Int) -> String {
+        // suffixFull[i]・suffixWithout[i]: 位置 i 以降の全部の組み合わせの数と、使いたい字を含まない組み合わせの数
+        let length = lists.count
+        var suffixFull = [Int128](repeating: 1, count: length + 1)
+        var suffixWithout = [Int128](repeating: 1, count: length + 1)
+        for i in stride(from: length - 1, through: 0, by: -1) {
+            suffixFull[i] = suffixFull[i + 1] * Int128(lists[i].count)
+            suffixWithout[i] = suffixWithout[i + 1] * Int128(usedFlags[i].filter { !$0 }.count)
+        }
+        var n = Int128(n)
+        var satisfied = false
+        var chars: [String] = []
+        for i in 0..<length {
+            for (k, char) in lists[i].enumerated() {
+                let now = satisfied || usedFlags[i][k]
+                let rest = now ? suffixFull[i + 1] : suffixFull[i + 1] - suffixWithout[i + 1]
+                if n < rest {
+                    chars.append(char)
+                    satisfied = now
+                    break
+                }
+                n -= rest
+            }
         }
         return chars.joined()
     }

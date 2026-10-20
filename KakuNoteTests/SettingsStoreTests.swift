@@ -61,28 +61,45 @@ final class SettingsStoreTests: XCTestCase {
         let data = try KanjiData.bundled.get()
         let settings = AppSettings(store: SettingsStore(url: url))
         // 何文字でもまとめて足せる。半角カナは前処理で全角になる。同じ字は 1 つだけ
-        XCTAssertNil(settings.addAvoidChars("乙ｱ乙", data: data))
-        XCTAssertNil(settings.addAvoidChars("ぬ", data: data))
+        XCTAssertNil(settings.addChars("乙ｱ乙", to: .avoid, data: data))
+        XCTAssertNil(settings.addChars("ぬ", to: .avoid, data: data))
         XCTAssertEqual(settings.avoidChars, ["乙", "ア", "ぬ"])
         XCTAssertEqual(AppSettings(store: SettingsStore(url: url)).avoidChars, ["乙", "ア", "ぬ"])
 
         // 正準等価な字は別の字として足せる
-        XCTAssertNil(settings.addAvoidChars("\u{6D77}\u{FA45}", data: data))
+        XCTAssertNil(settings.addChars("\u{6D77}\u{FA45}", to: .avoid, data: data))
         XCTAssertEqual(settings.avoidChars.count, 5)
 
-        settings.removeAvoidChar("ア")
-        settings.removeAvoidChar("\u{FA45}")
+        settings.removeChar("ア", from: .avoid)
+        settings.removeChar("\u{FA45}", from: .avoid)
         XCTAssertEqual(settings.avoidChars.map { $0.unicodeScalars.map(\.value) }, [[0x4E59], [0x306C], [0x6D77]])
     }
 
     func testAvoidCharsRejectsUnknownChars() throws {
         let data = try KanjiData.bundled.get()
         let settings = AppSettings(store: SettingsStore(url: url))
-        let message = settings.addAvoidChars("乙A", data: data)
+        let message = settings.addChars("乙A", to: .avoid, data: data)
         XCTAssertEqual(message, "「A」は登録できません。漢字・ひらがな・カタカナを入れてください")
         // 1 字でも足せない字があれば、何も足さない
         XCTAssertTrue(settings.avoidChars.isEmpty)
-        XCTAssertNotNil(settings.addAvoidChars("乙 一", data: data))
+        XCTAssertNotNil(settings.addChars("乙 一", to: .avoid, data: data))
+    }
+
+    func testUseCharsMustBeNameChars() throws {
+        let data = try KanjiData.bundled.get()
+        let settings = AppSettings(store: SettingsStore(url: url))
+        // 名前に使えない字（人名用でない漢字）は登録しない
+        let notName = try XCTUnwrap(data.chars.values.first { $0.script == .kanji && !$0.nameOK }).char
+        XCTAssertEqual(settings.addChars("陽" + notName, to: .use, data: data), "「\(notName)」は名前には使えない字です")
+        XCTAssertTrue(settings.useChars.isEmpty)
+        // 避けたい字には登録できる
+        XCTAssertNil(settings.addChars(notName, to: .avoid, data: data))
+
+        XCTAssertNil(settings.addChars("陽葵翔", to: .use, data: data))
+        XCTAssertEqual(settings.useChars, ["陽", "葵", "翔"])
+        XCTAssertEqual(AppSettings(store: SettingsStore(url: url)).useChars, ["陽", "葵", "翔"])
+        settings.removeChar("葵", from: .use)
+        XCTAssertEqual(settings.useChars, ["陽", "翔"])
     }
 
     func testSeiCheckTenkakuAndUnknownStrokes() throws {

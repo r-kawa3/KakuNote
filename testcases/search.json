@@ -635,6 +635,11 @@
               "丘つニ",
               "丘つヌ"
             ]
+          },
+          {
+            "offset": 309390,
+            "limit": 10,
+            "names": []
           }
         ]
       }
@@ -1501,6 +1506,339 @@
               "丁タ",
               "丁チ"
             ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "use_any_position",
+      "description": "使いたい字: 姓なし・2 文字・漢字・総画数 2 で「乙」を使う → 一乙、乙一、乙乙（一一 は出ない）",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2
+          ]
+        },
+        "use": [
+          "乙"
+        ]
+      },
+      "expected": {
+        "total": 3,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1
+            ],
+            "count": 3
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一乙",
+              "乙一",
+              "乙乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "use_beats_avoid",
+      "description": "使いたい字と避けたい字の両方に「乙」→ 使いたい字を優先。use_any_position と同じ結果",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2
+          ]
+        },
+        "avoid": [
+          "乙"
+        ],
+        "use": [
+          "乙"
+        ]
+      },
+      "expected": {
+        "total": 3,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              1
+            ],
+            "count": 3
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一乙",
+              "乙一",
+              "乙乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "use_satisfied_by_fixed",
+      "description": "使いたい字: 1 文字目に「陽」を固定し、「陽」を使う → 2 文字目は何でもよい（fixed_first_hiragana_second と同じ件数）",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "陽"
+          },
+          {
+            "kind": "free",
+            "script": "hiragana"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            15
+          ]
+        },
+        "use": [
+          "陽"
+        ]
+      },
+      "expected": {
+        "total": 31,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              12,
+              3
+            ],
+            "count": 31
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 30,
+            "names": [
+              "陽ぁ",
+              "陽あ",
+              "陽ぇ",
+              "陽え",
+              "陽か",
+              "陽ぐ",
+              "陽け",
+              "陽さ",
+              "陽じ",
+              "陽す",
+              "陽せ",
+              "陽そ",
+              "陽ち",
+              "陽づ",
+              "陽に",
+              "陽ぬ",
+              "陽ぴ",
+              "陽べ",
+              "陽み",
+              "陽も",
+              "陽ゃ",
+              "陽や",
+              "陽ゅ",
+              "陽ゆ",
+              "陽ょ",
+              "陽よ",
+              "陽ら",
+              "陽る",
+              "陽れ",
+              "陽わ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "use_several_with_pages",
+      "description": "使いたい字: 姓あり（田中）・3 文字・漢字・総格 30 で「陽」「葵」「翔」のどれかを使う。ページ送りを含む",
+      "input": {
+        "sei": "田中",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "soukaku": [
+            30
+          ]
+        },
+        "use": [
+          "陽",
+          "葵",
+          "翔"
+        ]
+      },
+      "expected": {
+        "total": 309396,
+        "breakdown_count": 24,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              1,
+              8,
+              12
+            ],
+            "count": 1542
+          },
+          {
+            "strokes": [
+              1,
+              12,
+              8
+            ],
+            "count": 1542
+          },
+          {
+            "strokes": [
+              2,
+              7,
+              12
+            ],
+            "count": 8106
+          },
+          {
+            "strokes": [
+              2,
+              12,
+              7
+            ],
+            "count": 8106
+          },
+          {
+            "strokes": [
+              3,
+              6,
+              12
+            ],
+            "count": 15762
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "一並翔",
+              "一並葵",
+              "一並陽",
+              "一乳翔",
+              "一乳葵",
+              "一乳陽",
+              "一事翔",
+              "一事葵",
+              "一事陽",
+              "一些翔"
+            ]
+          },
+          {
+            "offset": 1000,
+            "limit": 10,
+            "names": [
+              "乙宜葵",
+              "乙宜陽",
+              "乙宝翔",
+              "乙宝葵",
+              "乙宝陽",
+              "乙実翔",
+              "乙実葵",
+              "乙実陽",
+              "乙尚翔",
+              "乙尚葵"
+            ]
+          },
+          {
+            "offset": 309390,
+            "limit": 10,
+            "names": [
+              "陽非一",
+              "陽非乙",
+              "陽卑一",
+              "陽卑乙",
+              "陽社一",
+              "陽社乙"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "use_no_match",
+      "description": "使いたい字: 1 文字・総画数 1 で「陽」（12 画）を使う → 0 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            1
+          ]
+        },
+        "use": [
+          "陽"
+        ]
+      },
+      "expected": {
+        "total": 0,
+        "breakdown_count": 0,
+        "first_breakdowns": [],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": []
           }
         ]
       }

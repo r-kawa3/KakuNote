@@ -572,6 +572,33 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(remove.waitForNonExistence(timeout: 5))
     }
 
+    /// 設定画面で使いたい字を登録すると、その字を含む候補だけが出て、チップに出る。名前に使えない字は登録しない。
+    @MainActor
+    func testUseCharsFromSettings() throws {
+        let app = launchWithFreshSettings()
+        app.buttons["settings.open"].tap()
+        let input = app.textFields["settings.use.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        // 名前に使えない字（常用漢字・人名用漢字でない「乂」）
+        input.tap()
+        input.typeText("乂\n")
+        let error = app.staticTexts["settings.use.error"]
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        XCTAssertEqual(error.label, "「乂」は名前には使えない字です")
+        input.tap()
+        input.typeText("\u{8}乙\n")
+        XCTAssertTrue(app.buttons["settings.use.remove.乙"].waitForExistence(timeout: 5))
+        app.buttons["settings.close"].tap()
+
+        // 2 文字・総画数 2 → 一乙、乙一、乙乙（一一 は出ない）
+        search(app, length: 2, total: "2")
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "3件")
+        XCTAssertFalse(app.buttons["一一"].exists)
+        XCTAssertTrue(app.buttons["乙乙"].exists)
+        XCTAssertTrue(app.staticTexts["使いたい字: 乙"].exists)
+    }
+
     /// 設定の保存先を一時ファイルにし、空の状態で起動する。
     @MainActor
     private func launchWithFreshSettings() -> XCUIApplication {
