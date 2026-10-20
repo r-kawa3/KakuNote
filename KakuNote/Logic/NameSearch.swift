@@ -67,7 +67,7 @@ nonisolated struct SearchQuery: Hashable, Codable, Sendable {
     var readingPrefix = false
 }
 
-extension SearchQuery {
+nonisolated extension SearchQuery {
     private enum CodingKeys: String, CodingKey {
         case sei, positions, conditions, avoid, use, reading, readingPrefix
     }
