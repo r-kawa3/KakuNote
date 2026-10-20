@@ -243,17 +243,38 @@ final class SearchTests: XCTestCase {
         XCTAssertEqual(Reading.prefixes(of: kokoro).count, 3)
     }
 
-    /// 読みがあれば、6 文字でも速く数えられる。
-    func testReadingSixCharsIsFast() throws {
+    /// 読みがあれば、6 文字で格の条件がとても広くても（内訳が約 850 万）、速く数えてページを作れる。
+    func testReadingSixCharsWideConditionIsFast() throws {
         let query = SearchQuery(
-            sei: nil, positions: Array(repeating: .free(.any), count: 6), conditions: [.chikaku: [40]],
+            sei: nil, positions: Array(repeating: .free(.any), count: 6), conditions: [.chikaku: Set(6...120)],
             reading: "はるかなそら"
         )
         let start = Date()
         let search = try NameSearch(query: query, data: data, school: school)
-        XCTAssertGreaterThan(search.total, 0)
-        _ = search.page(offset: search.total / 2, limit: 50)
-        XCTAssertLessThan(Date().timeIntervalSince(start), 5)
+        XCTAssertEqual(search.total, 4_191_688_453)
+        // 真ん中のページは、内訳を全部たどっていたころと同じ（最初の 3 件）
+        XCTAssertEqual(
+            search.page(offset: search.total / 2, limit: 50).prefix(3).map(\.codePoints),
+            ["剝弄坂長粗村", "剝弄坂長粗良", "剝弄坂長組乱"].map(\.codePoints)
+        )
+        XCTAssertEqual(search.page(offset: 0, limit: 50).count, 50)
+        XCTAssertEqual(search.page(offset: search.total - 2, limit: 50).count, 2)
+        // デバッグビルドでのしきい値（最適化したビルドでは 0.1 秒ほど）
+        XCTAssertLessThan(Date().timeIntervalSince(start), 3)
+    }
+
+    /// 読みがあるときのページ送りは、内訳をまたいでも続いている（1 件ずつ取ったものと、まとめて取ったものが同じ）。
+    func testReadingPagesAcrossBreakdowns() throws {
+        let query = SearchQuery(
+            sei: "田中", positions: [.free(.kanji), .free(.any)], conditions: [.soukaku: Set(10...60)], reading: "はるな"
+        )
+        let search = try NameSearch(query: query, data: data, school: school)
+        let all = search.page(offset: 0, limit: search.total).map(\.codePoints)
+        XCTAssertEqual(all.count, search.total)
+        XCTAssertEqual(search.breakdowns.map(\.count).reduce(0, +), search.total)
+        for offset in stride(from: 0, to: search.total, by: 37) {
+            XCTAssertEqual(search.page(offset: offset, limit: 41).map(\.codePoints), Array(all[offset..<min(offset + 41, all.count)]))
+        }
     }
 
     /// 読みの入力: カタカナはひらがなに直し、空なら絞り込まない。ひらがな以外はエラー。

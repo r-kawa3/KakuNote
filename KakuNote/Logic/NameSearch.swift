@@ -135,9 +135,15 @@ nonisolated struct NameSearch: Sendable {
     /// 内訳ごとの候補の数
     private let breakdownCounts: [Int]
 
+    /// 読みがあるときの数え方（内訳を全部持たずに数える）。nil なら内訳を breakdownStrokes に持つ
+    private let readingSearch: ReadingSearch?
+
     /// 条件を満たす内訳（辞書式の小さい順）。テストや表示で使う
     var breakdowns: [Breakdown] {
-        breakdownCounts.indices.map { i in
+        if let readingSearch {
+            return readingSearch.allBreakdowns()
+        }
+        return breakdownCounts.indices.map { i in
             Breakdown(strokes: Array(breakdownStrokes[(i * length)..<((i + 1) * length)]), count: breakdownCounts[i])
         }
     }
@@ -231,6 +237,7 @@ nonisolated struct NameSearch: Sendable {
         var breakdownStrokes: [Int] = []
         var breakdownCounts: [Int] = []
         var total = 0
+        var readingSearch: ReadingSearch?
         if strokeValues.allSatisfy({ !$0.isEmpty }) {
             let bounds = ConditionBounds(
                 kakuValues: { Self.kakuValues(mei: $0, sei: seiStrokes, school: school) },
@@ -240,30 +247,11 @@ nonisolated struct NameSearch: Sendable {
             // 深さごとの「途中までの格の値の増え方」。全部の位置を決めると、各格の値そのものになる
             var partials = [[Int]](repeating: [Int](repeating: 0, count: bounds.itemCount), count: length + 1)
             var current = [Int](repeating: 0, count: length)
-            // 読みがあるとき: 位置ごと・画数ごとの、まとめた字と、深さごとの「ここまでの状態 → 組み合わせの数」。
-            // 状態がなくなった途中の組み合わせは、その先をたどらない
-            let readingClasses = readingTable == nil ? [] : (0..<length).map { i in
-                strokeValues[i].map { value in
-                    ReadingClass.group(
-                        keys: readingKeys[i][value]!,
-                        used: candidates[i][value]!.map { used.contains($0.codePoints) }
-                    )
-                }
-            }
-            let keepsBase = (0..<length).map { i in
-                readingKeys[(i + 1)...].contains { $0.values.contains { $0.contains(ReadingTable.odoriji) } }
-            }
-            var paths = [[ReadingTable.Path: Int128]](repeating: [:], count: length + 1)
-            paths[0] = [.start(needsUse: !used.isEmpty): 1]
-
             // 内訳の途中までの「全部の組み合わせの数」と「使いたい字を 1 つも含まない組み合わせの数」。
             // 6 文字では 64 ビットをあふれうるので、128 ビットで正確に数える
             func visit(_ index: Int, _ full: Int128, _ without: Int128) throws {
                 if index == length {
-                    var count = used.isEmpty ? full : full - without
-                    if let readingTable {
-                        count = paths[length].reduce(0) { $0 + (readingTable.accepts($1.key) ? $1.value : 0) }
-                    }
+                    let count = used.isEmpty ? full : full - without
                     // 使いたい字を含む候補がない内訳は残さない
                     guard count > 0 else { return }
                     // 内訳 1 つの件数だけで上限を超える場合も、ここで止める
@@ -280,30 +268,39 @@ nonisolated struct NameSearch: Sendable {
                     guard bounds.extend(partial, at: index, with: value, into: &partials[index + 1]) else {
                         continue
                     }
-                    if let readingTable {
-                        var next: [ReadingTable.Path: Int128] = [:]
-                        for (path, ways) in paths[index] {
-                            for item in readingClasses[index][k] {
-                                guard let moved = readingTable.step(
-                                    path, key: item.key, used: item.used,
-                                    remaining: length - index - 1, keepBase: keepsBase[index]
-                                ) else { continue }
-                                next[moved, default: 0] += ways * item.count
-                            }
-                        }
-                        guard !next.isEmpty else { continue }
-                        paths[index + 1] = next
-                    }
                     current[index] = value
                     try visit(index + 1, full * counts[index][k], without * (counts[index][k] - usedCounts[index][k]))
                 }
             }
-            try visit(0, 1, 1)
+            if let readingTable {
+                // 読みがあるときは、内訳が数百万になることがあるので、内訳を持たずに数える
+                let search = ReadingSearch(
+                    table: readingTable, bounds: bounds, strokeValues: strokeValues,
+                    classes: (0..<length).map { i in
+                        strokeValues[i].map { value in
+                            ReadingClass.group(
+                                keys: readingKeys[i][value]!,
+                                used: candidates[i][value]!.map { used.contains($0.codePoints) }
+                            )
+                        }
+                    },
+                    keepsBase: (0..<length).map { i in
+                        readingKeys[(i + 1)...].contains { $0.values.contains { $0.contains(ReadingTable.odoriji) } }
+                    },
+                    needsUse: !used.isEmpty
+                )
+                guard search.total <= Int128(Self.maxTotal) else { throw SearchError.tooManyResults }
+                total = Int(search.total)
+                readingSearch = search
+            } else {
+                try visit(0, 1, 1)
+            }
         }
         self.length = length
         self.seiStrokes = seiStrokes
         self.breakdownStrokes = breakdownStrokes
         self.breakdownCounts = breakdownCounts
+        self.readingSearch = readingSearch
         self.total = total
     }
 
@@ -315,6 +312,25 @@ nonisolated struct NameSearch: Sendable {
     /// page と同じ範囲の候補を、各字の画数と一緒に返す。
     func candidates(offset: Int, limit: Int) -> [Candidate] {
         guard offset >= 0, limit > 0 else { return [] }
+        if let readingSearch, let readingTable {
+            // 読みがあるとき: その件数目の内訳と、内訳の中の番号を直接求め、内訳の中は順に作る
+            var result: [Candidate] = []
+            var index = offset
+            while result.count < limit && index < total {
+                let (strokes, inner, count) = readingSearch.locate(Int128(index))
+                let lists = (0..<length).map { candidates[$0][strokes[$0]]! }
+                var counter = Self.readingCounter(
+                    strokes: strokes, candidates: candidates, readingKeys: readingKeys, used: used, table: readingTable
+                )
+                var j = inner
+                while j < count && result.count < limit {
+                    result.append(Candidate(name: zip(lists, counter.nth(j)).map { $0[$1] }.joined(), strokes: strokes))
+                    j += 1
+                    index += 1
+                }
+            }
+            return result
+        }
         var result: [Candidate] = []
         var index = offset
         for (i, count) in breakdownCounts.enumerated() {
@@ -325,14 +341,9 @@ nonisolated struct NameSearch: Sendable {
             let strokes = Array(breakdownStrokes[(i * length)..<((i + 1) * length)])
             let lists = (0..<length).map { candidates[$0][strokes[$0]]! }
             let flags = used.isEmpty ? [] : lists.map { $0.map { used.contains($0.codePoints) } }
-            var counter = readingTable.map {
-                Self.readingCounter(strokes: strokes, candidates: candidates, readingKeys: readingKeys, used: used, table: $0)
-            }
             while index < count && result.count < limit {
                 let name: String
-                if counter != nil {
-                    name = zip(lists, counter!.nth(Int128(index))).map { $0[$1] }.joined()
-                } else if used.isEmpty {
+                if used.isEmpty {
                     name = Self.combination(lists, at: index)
                 } else {
                     name = Self.combination(lists, usedFlags: flags, at: index)
@@ -416,6 +427,139 @@ nonisolated struct NameSearch: Sendable {
                 if lower == item.allowed.count || item.allowed[lower] > high { return false }
             }
             return true
+        }
+    }
+
+    /// 読みがあるときの数え方。内訳（画数の組）を全部は作らず、
+    /// 「位置・読みの割り振りの状態・途中までの格の値 → この先で条件に合う組み合わせの数」を覚えておく。
+    /// 総数はこれで求め、n 件目は位置 1 から順に画数を決めて直接求める（仕様書 search.md「数え方（実装の例）」）。
+    private struct ReadingSearch: Sendable {
+        let table: ReadingTable
+        let bounds: ConditionBounds
+        let strokeValues: [[Int]]
+        /// classes[i][k]: 位置 i・画数 strokeValues[i][k] の字を、同じように数えられるものにまとめたもの
+        let classes: [[[ReadingClass]]]
+        let keepsBase: [Bool]
+        let total: Int128
+        /// 位置 1 の前の状態
+        private let start: ReadingTable.Path
+        private let memo: [Key: Int128]
+
+        private struct Key: Hashable {
+            let index: Int
+            let path: ReadingTable.Path
+            let partial: [Int]
+        }
+
+        init(
+            table: ReadingTable, bounds: ConditionBounds, strokeValues: [[Int]], classes: [[[ReadingClass]]],
+            keepsBase: [Bool], needsUse: Bool
+        ) {
+            self.table = table
+            self.bounds = bounds
+            self.strokeValues = strokeValues
+            self.classes = classes
+            self.keepsBase = keepsBase
+            let start = ReadingTable.Path.start(needsUse: needsUse)
+            self.start = start
+            let length = strokeValues.count
+            var memo: [Key: Int128] = [:]
+            func count(_ index: Int, _ path: ReadingTable.Path, _ partial: [Int]) -> Int128 {
+                if index == length { return table.accepts(path) ? 1 : 0 }
+                let key = Key(index: index, path: path, partial: partial)
+                if let cached = memo[key] { return cached }
+                var total: Int128 = 0
+                var next = partial
+                for (k, value) in strokeValues[index].enumerated() {
+                    guard bounds.extend(partial, at: index, with: value, into: &next) else { continue }
+                    for item in classes[index][k] {
+                        guard let moved = table.step(
+                            path, key: item.key, used: item.used, remaining: length - index - 1, keepBase: keepsBase[index]
+                        ) else { continue }
+                        total += item.count * count(index + 1, moved, next)
+                    }
+                }
+                memo[key] = total
+                return total
+            }
+            total = count(0, start, [Int](repeating: 0, count: bounds.itemCount))
+            self.memo = memo
+        }
+
+        /// 位置 index 以降で条件に合う組み合わせの数（覚えた値）。
+        private func suffix(_ index: Int, _ path: ReadingTable.Path, _ partial: [Int]) -> Int128 {
+            index == strokeValues.count
+                ? (table.accepts(path) ? 1 : 0)
+                : memo[Key(index: index, path: path, partial: partial)] ?? 0
+        }
+
+        /// 位置 index の画数を k 番目にしたときの、ここまでの状態の分布と途中の格の値。条件を満たせなければ nil。
+        private func extend(
+            _ paths: [ReadingTable.Path: Int128], _ partial: [Int], at index: Int, k: Int
+        ) -> (paths: [ReadingTable.Path: Int128], partial: [Int])? {
+            var next = partial
+            guard bounds.extend(partial, at: index, with: strokeValues[index][k], into: &next) else { return nil }
+            var moved: [ReadingTable.Path: Int128] = [:]
+            for (path, ways) in paths {
+                for item in classes[index][k] {
+                    guard let step = table.step(
+                        path, key: item.key, used: item.used,
+                        remaining: strokeValues.count - index - 1, keepBase: keepsBase[index]
+                    ) else { continue }
+                    moved[step, default: 0] += ways * item.count
+                }
+            }
+            return moved.isEmpty ? nil : (moved, next)
+        }
+
+        private func count(_ paths: [ReadingTable.Path: Int128], _ partial: [Int], from index: Int) -> Int128 {
+            paths.reduce(0) { $0 + $1.value * suffix(index, $1.key, partial) }
+        }
+
+        /// 全体の n 件目（0 始まり）が入っている内訳と、内訳の中での番号、その内訳の件数。
+        func locate(_ n: Int128) -> (strokes: [Int], inner: Int128, count: Int128) {
+            var n = n
+            var paths: [ReadingTable.Path: Int128] = [start: 1]
+            var partial = [Int](repeating: 0, count: bounds.itemCount)
+            var strokes: [Int] = []
+            var last: Int128 = 0
+            for index in strokeValues.indices {
+                for k in strokeValues[index].indices {
+                    guard let (moved, next) = extend(paths, partial, at: index, k: k) else { continue }
+                    let c = count(moved, next, from: index + 1)
+                    if n < c {
+                        strokes.append(strokeValues[index][k])
+                        paths = moved
+                        partial = next
+                        last = c
+                        break
+                    }
+                    n -= c
+                }
+            }
+            return (strokes, n, last)
+        }
+
+        /// 条件に合う候補がある内訳を、辞書式の小さい順に全部（テスト用。件数の小さい検索で使う）。
+        func allBreakdowns() -> [Breakdown] {
+            var result: [Breakdown] = []
+            var strokes: [Int] = []
+            func walk(_ index: Int, _ paths: [ReadingTable.Path: Int128], _ partial: [Int]) {
+                for k in strokeValues[index].indices {
+                    guard let (moved, next) = extend(paths, partial, at: index, k: k) else { continue }
+                    let c = count(moved, next, from: index + 1)
+                    guard c > 0 else { continue }
+                    strokes.append(strokeValues[index][k])
+                    if index + 1 == strokeValues.count {
+                        result.append(Breakdown(strokes: strokes, count: Int(c)))
+                    } else {
+                        walk(index + 1, moved, next)
+                    }
+                    strokes.removeLast()
+                }
+            }
+            walk(0, [start: 1], [Int](repeating: 0, count: bounds.itemCount))
+            return result
         }
     }
 
