@@ -1844,6 +1844,610 @@
       }
     },
     {
+      "id": "reading_haruto",
+      "description": "読み: 姓なし・2 文字・漢字・総画数 16・読み「はると」。陽斗（12 + 4）が入る。音・訓・名乗りのどれでもよい",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            16
+          ]
+        },
+        "reading": "はると"
+      },
+      "expected": {
+        "total": 98,
+        "breakdown_count": 7,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              4,
+              12
+            ],
+            "count": 9
+          },
+          {
+            "strokes": [
+              5,
+              11
+            ],
+            "count": 12
+          },
+          {
+            "strokes": [
+              8,
+              8
+            ],
+            "count": 24
+          },
+          {
+            "strokes": [
+              9,
+              7
+            ],
+            "count": 8
+          },
+          {
+            "strokes": [
+              11,
+              5
+            ],
+            "count": 9
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 20,
+            "names": [
+              "元勝",
+              "元博",
+              "元富",
+              "元渡",
+              "元登",
+              "元等",
+              "元翔",
+              "元遂",
+              "元階",
+              "玄停",
+              "玄兜",
+              "玄冨",
+              "玄問",
+              "玄執",
+              "玄堵",
+              "玄採",
+              "玄訪",
+              "玄都",
+              "玄閉",
+              "玄鳥"
+            ]
+          },
+          {
+            "offset": 40,
+            "limit": 20,
+            "names": [
+              "治取",
+              "治妬",
+              "治泊",
+              "治采",
+              "治門",
+              "春利",
+              "春図",
+              "春杜",
+              "春臣",
+              "美利",
+              "美図",
+              "美杜",
+              "美臣",
+              "問外",
+              "問永",
+              "問石",
+              "張外",
+              "張永",
+              "張石",
+              "脩外"
+            ]
+          },
+          {
+            "offset": 80,
+            "limit": 20,
+            "names": [
+              "遥斗",
+              "遥止",
+              "開仁",
+              "開夫",
+              "開戸",
+              "開斗",
+              "開止",
+              "陽仁",
+              "陽夫",
+              "陽戸",
+              "陽斗",
+              "陽止",
+              "榛人",
+              "榛刀",
+              "榛十",
+              "遙人",
+              "遙刀",
+              "遙十"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_katakana_input",
+      "description": "読み: カタカナで入れても、ひらがなに直して比べる。reading_haruto と同じ結果",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            16
+          ]
+        },
+        "reading": "ハルト"
+      },
+      "expected": {
+        "total": 98,
+        "breakdown_count": 7,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              4,
+              12
+            ],
+            "count": 9
+          },
+          {
+            "strokes": [
+              5,
+              11
+            ],
+            "count": 12
+          },
+          {
+            "strokes": [
+              8,
+              8
+            ],
+            "count": 24
+          },
+          {
+            "strokes": [
+              9,
+              7
+            ],
+            "count": 8
+          },
+          {
+            "strokes": [
+              11,
+              5
+            ],
+            "count": 9
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 20,
+            "names": [
+              "元勝",
+              "元博",
+              "元富",
+              "元渡",
+              "元登",
+              "元等",
+              "元翔",
+              "元遂",
+              "元階",
+              "玄停",
+              "玄兜",
+              "玄冨",
+              "玄問",
+              "玄執",
+              "玄堵",
+              "玄採",
+              "玄訪",
+              "玄都",
+              "玄閉",
+              "玄鳥"
+            ]
+          },
+          {
+            "offset": 40,
+            "limit": 20,
+            "names": [
+              "治取",
+              "治妬",
+              "治泊",
+              "治采",
+              "治門",
+              "春利",
+              "春図",
+              "春杜",
+              "春臣",
+              "美利",
+              "美図",
+              "美杜",
+              "美臣",
+              "問外",
+              "問永",
+              "問石",
+              "張外",
+              "張永",
+              "張石",
+              "脩外"
+            ]
+          },
+          {
+            "offset": 80,
+            "limit": 20,
+            "names": [
+              "遥斗",
+              "遥止",
+              "開仁",
+              "開夫",
+              "開戸",
+              "開斗",
+              "開止",
+              "陽仁",
+              "陽夫",
+              "陽戸",
+              "陽斗",
+              "陽止",
+              "榛人",
+              "榛刀",
+              "榛十",
+              "遙人",
+              "遙刀",
+              "遙十"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_odoriji_rendaku",
+      "description": "読み: 人々（ひとびと）。々 は直前の字（人）の読みを使い、2 文字目なので連濁（ひと → びと）も認める",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "人"
+          },
+          {
+            "kind": "fixed",
+            "char": "々"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            5
+          ]
+        },
+        "reading": "ひとびと"
+      },
+      "expected": {
+        "total": 1,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              2,
+              3
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "人々"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_no_rendaku_first",
+      "description": "読み: 1 文字目には連濁を当てはめない。人（ひと）を「びと」とは読まない → 0 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "人"
+          },
+          {
+            "kind": "free",
+            "script": "hiragana"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        "reading": "びとみ"
+      },
+      "expected": {
+        "total": 0,
+        "breakdown_count": 0,
+        "first_breakdowns": [],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_kana_chars",
+      "description": "読み: ひらがな・カタカナの字の読みはその字そのもの。3 文字目は種類 any で、ら・ラ と「ら」と読む漢字（ら は 3 画、ラ は 2 画）",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "hiragana"
+          },
+          {
+            "kind": "free",
+            "script": "hiragana"
+          },
+          {
+            "kind": "free",
+            "script": "any"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            6,
+            7
+          ]
+        },
+        "reading": "さくら"
+      },
+      "expected": {
+        "total": 2,
+        "breakdown_count": 2,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              3,
+              1,
+              2
+            ],
+            "count": 1
+          },
+          {
+            "strokes": [
+              3,
+              1,
+              3
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 20,
+            "names": [
+              "さくラ",
+              "さくら"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_long_vowel",
+      "description": "読み: 「ー」は「ー」のまま比べる → ルー",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "katakana"
+          },
+          {
+            "kind": "free",
+            "script": "katakana"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            3
+          ]
+        },
+        "reading": "るー"
+      },
+      "expected": {
+        "total": 1,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              2,
+              1
+            ],
+            "count": 1
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": [
+              "ルー"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_fixed_mismatch",
+      "description": "読み: 固定した字も、読みが合わなければ候補にならない。乙 は「は」から始まる読みを担えない → 0 件",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "fixed",
+            "char": "乙"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        "reading": "はると"
+      },
+      "expected": {
+        "total": 0,
+        "breakdown_count": 0,
+        "first_breakdowns": [],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 10,
+            "names": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "reading_with_sei_and_use",
+      "description": "読み: 姓あり（田中）・2 文字・総格 24, 31・読み「ゆうと」・使いたい字「優」。両方を満たす候補だけ",
+      "input": {
+        "sei": "田中",
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          },
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "soukaku": [
+            24,
+            31
+          ]
+        },
+        "reading": "ゆうと",
+        "use": [
+          "優"
+        ]
+      },
+      "expected": {
+        "total": 3,
+        "breakdown_count": 1,
+        "first_breakdowns": [
+          {
+            "strokes": [
+              17,
+              5
+            ],
+            "count": 3
+          }
+        ],
+        "pages": [
+          {
+            "offset": 0,
+            "limit": 20,
+            "names": [
+              "優外",
+              "優永",
+              "優石"
+            ]
+          },
+          {
+            "offset": 20,
+            "limit": 20,
+            "names": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "error_invalid_reading",
+      "description": "読み: ひらがな・カタカナ・「ー」以外が入っていたらエラー",
+      "input": {
+        "sei": null,
+        "positions": [
+          {
+            "kind": "free",
+            "script": "kanji"
+          }
+        ],
+        "conditions": {
+          "chikaku": [
+            1
+          ]
+        },
+        "reading": "haru"
+      },
+      "expected": {
+        "error": "invalid_reading"
+      }
+    },
+    {
       "id": "error_seven_chars",
       "description": "名は 6 文字まで",
       "input": {

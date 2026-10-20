@@ -61,11 +61,13 @@ nonisolated struct SearchQuery: Hashable, Codable, Sendable {
     /// 使いたい字。どれか 1 つ以上が名のどこかに入っている候補だけを残す（仕様書 search.md「使いたい字」）。
     /// 避けたい字にも入っていたら、使いたい字を優先する
     var use: [String] = []
+    /// 名前全体の読み（ひらがな。カタカナはひらがなに直して比べる）。nil や空なら絞り込まない（仕様書 search.md「読み」）
+    var reading: String?
 }
 
 extension SearchQuery {
     private enum CodingKeys: String, CodingKey {
-        case sei, positions, conditions, avoid, use
+        case sei, positions, conditions, avoid, use, reading
     }
 
     // 避けたい字がなかったころに保存した条件（お気に入り）も読めるようにする
@@ -76,6 +78,7 @@ extension SearchQuery {
         conditions = try container.decode([KakuKind: Set<Int>].self, forKey: .conditions)
         avoid = try container.decodeIfPresent([String].self, forKey: .avoid) ?? []
         use = try container.decodeIfPresent([String].self, forKey: .use) ?? []
+        reading = try container.decodeIfPresent(String.self, forKey: .reading)
     }
 }
 
@@ -94,6 +97,8 @@ nonisolated enum SearchError: Error, Equatable {
     case unknownStrokes([String])
     /// 候補の総数が NameSearch.maxTotal を超える（条件が広すぎる）
     case tooManyResults
+    /// 読みが、ひらがな（カタカナ・「ー」）1〜30 文字でない
+    case invalidReading
 }
 
 /// 名前の候補の検索（仕様書 search.md）。候補は全部を作らず、page で必要な範囲だけを作る。
@@ -138,6 +143,10 @@ nonisolated struct NameSearch: Sendable {
     private let candidates: [[Int: [String]]]
     /// 使いたい字（コードポイントの並び）。空なら条件なし
     private let used: Set<[UInt32]>
+    /// 読みでの絞り込みの表。nil なら読みの条件なし
+    private let readingTable: ReadingTable?
+    /// 位置ごと: 画数 → candidates と同じ順の、字の読みのキー（ReadingTable.key）
+    private let readingKeys: [[Int: [Int]]]
 
     init(query: SearchQuery, data: KanjiData, school: any KakuSchool) throws {
         guard (1...Self.maxLength).contains(query.positions.count) else { throw SearchError.invalidLength }
@@ -164,25 +173,46 @@ nonisolated struct NameSearch: Sendable {
             return avoided.isEmpty ? chars : chars.filter { !avoided.contains($0.char.codePoints) }
         }
 
+        // 読み。どの部分も担えない字は、はじめから候補から外す（結果は変わらない）
+        var readingTable = try query.reading.flatMap { try Reading.normalize($0) }.map { ReadingTable(reading: $0) }
+
         // 位置ごとの候補の字
         var candidates: [[Int: [String]]] = []
+        var readingKeys: [[Int: [Int]]] = []
         for (index, position) in query.positions.enumerated() {
+            var infos: [CharInfo]
             switch position {
             case .fixed(let text):
                 let chars = try Self.characters(text)
                 guard chars.count == 1 else { throw SearchError.fixedNotSingleChar(position: index + 1) }
-                let strokes = try Self.strokes(of: chars, data: data)
-                candidates.append([strokes[0]: chars])
+                _ = try Self.strokes(of: chars, data: data)
+                infos = [data.info(chars[0])!]
             case .strokes(let strokes, let script):
-                let chars = autoCandidates(script, initial: index == 0).filter { $0.strokes == strokes }
-                candidates.append(chars.isEmpty ? [:] : [strokes: chars.map(\.char)])
+                infos = autoCandidates(script, initial: index == 0).filter { $0.strokes == strokes }
             case .free(let script):
-                candidates.append(Dictionary(grouping: autoCandidates(script, initial: index == 0), by: \.strokes)
-                    .mapValues { $0.map(\.char) })
+                infos = autoCandidates(script, initial: index == 0)
             }
+            var keys: [Int] = []
+            if readingTable != nil {
+                infos = infos.filter { info in
+                    guard let key = readingTable!.key(for: info, position: index, data: data) else { return false }
+                    keys.append(key)
+                    return true
+                }
+            }
+            var group: [Int: [String]] = [:]
+            var keyGroup: [Int: [Int]] = [:]
+            for (k, info) in infos.enumerated() {
+                group[info.strokes, default: []].append(info.char)
+                if readingTable != nil { keyGroup[info.strokes, default: []].append(keys[k]) }
+            }
+            candidates.append(group)
+            readingKeys.append(keyGroup)
         }
         self.candidates = candidates
         self.used = used
+        self.readingTable = readingTable
+        self.readingKeys = readingKeys
 
         // 条件を満たす内訳を、辞書式の小さい順に求める。
         // 条件を満たせないとわかった途中の組み合わせは打ち切る（仕様書 search.md「内訳の列挙の打ち切り」）
@@ -205,11 +235,30 @@ nonisolated struct NameSearch: Sendable {
             // 深さごとの「途中までの格の値の増え方」。全部の位置を決めると、各格の値そのものになる
             var partials = [[Int]](repeating: [Int](repeating: 0, count: bounds.itemCount), count: length + 1)
             var current = [Int](repeating: 0, count: length)
+            // 読みがあるとき: 位置ごと・画数ごとの、まとめた字と、深さごとの「ここまでの状態 → 組み合わせの数」。
+            // 状態がなくなった途中の組み合わせは、その先をたどらない
+            let readingClasses = readingTable == nil ? [] : (0..<length).map { i in
+                strokeValues[i].map { value in
+                    ReadingClass.group(
+                        keys: readingKeys[i][value]!,
+                        used: candidates[i][value]!.map { used.contains($0.codePoints) }
+                    )
+                }
+            }
+            let keepsBase = (0..<length).map { i in
+                readingKeys[(i + 1)...].contains { $0.values.contains { $0.contains(ReadingTable.odoriji) } }
+            }
+            var paths = [[ReadingTable.Path: Int128]](repeating: [:], count: length + 1)
+            paths[0] = [.start(needsUse: !used.isEmpty): 1]
+
             // 内訳の途中までの「全部の組み合わせの数」と「使いたい字を 1 つも含まない組み合わせの数」。
             // 6 文字では 64 ビットをあふれうるので、128 ビットで正確に数える
             func visit(_ index: Int, _ full: Int128, _ without: Int128) throws {
                 if index == length {
-                    let count = used.isEmpty ? full : full - without
+                    var count = used.isEmpty ? full : full - without
+                    if let readingTable {
+                        count = paths[length].reduce(0) { $0 + (readingTable.accepts($1.key) ? $1.value : 0) }
+                    }
                     // 使いたい字を含む候補がない内訳は残さない
                     guard count > 0 else { return }
                     // 内訳 1 つの件数だけで上限を超える場合も、ここで止める
@@ -225,6 +274,20 @@ nonisolated struct NameSearch: Sendable {
                 for (k, value) in strokeValues[index].enumerated() {
                     guard bounds.extend(partial, at: index, with: value, into: &partials[index + 1]) else {
                         continue
+                    }
+                    if let readingTable {
+                        var next: [ReadingTable.Path: Int128] = [:]
+                        for (path, ways) in paths[index] {
+                            for item in readingClasses[index][k] {
+                                guard let moved = readingTable.step(
+                                    path, key: item.key, used: item.used,
+                                    remaining: length - index - 1, keepBase: keepsBase[index]
+                                ) else { continue }
+                                next[moved, default: 0] += ways * item.count
+                            }
+                        }
+                        guard !next.isEmpty else { continue }
+                        paths[index + 1] = next
                     }
                     current[index] = value
                     try visit(index + 1, full * counts[index][k], without * (counts[index][k] - usedCounts[index][k]))
@@ -257,8 +320,18 @@ nonisolated struct NameSearch: Sendable {
             let strokes = Array(breakdownStrokes[(i * length)..<((i + 1) * length)])
             let lists = (0..<length).map { candidates[$0][strokes[$0]]! }
             let flags = used.isEmpty ? [] : lists.map { $0.map { used.contains($0.codePoints) } }
+            var counter = readingTable.map {
+                Self.readingCounter(strokes: strokes, candidates: candidates, readingKeys: readingKeys, used: used, table: $0)
+            }
             while index < count && result.count < limit {
-                let name = used.isEmpty ? Self.combination(lists, at: index) : Self.combination(lists, usedFlags: flags, at: index)
+                let name: String
+                if counter != nil {
+                    name = zip(lists, counter!.nth(Int128(index))).map { $0[$1] }.joined()
+                } else if used.isEmpty {
+                    name = Self.combination(lists, at: index)
+                } else {
+                    name = Self.combination(lists, usedFlags: flags, at: index)
+                }
                 result.append(Candidate(name: name, strokes: strokes))
                 index += 1
             }
@@ -350,6 +423,18 @@ nonisolated struct NameSearch: Sendable {
             n /= lists[i].count
         }
         return chars.joined()
+    }
+
+    /// 内訳 strokes の、読み（と使いたい字）の数え方。
+    private static func readingCounter(
+        strokes: [Int], candidates: [[Int: [String]]], readingKeys: [[Int: [Int]]], used: Set<[UInt32]>, table: ReadingTable
+    ) -> ReadingCounter {
+        ReadingCounter(
+            keys: strokes.indices.map { readingKeys[$0][strokes[$0]]! },
+            used: strokes.indices.map { i in candidates[i][strokes[i]]!.map { used.contains($0.codePoints) } },
+            table: table,
+            needsUse: !used.isEmpty
+        )
     }
 
     /// 使いたい字の条件を満たす組み合わせのうち、n 番目（0 始まり）。

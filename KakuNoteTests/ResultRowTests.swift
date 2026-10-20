@@ -63,6 +63,15 @@ final class ResultRowTests: XCTestCase {
         ])
     }
 
+    func testChipShowsReading() {
+        let query = SearchQuery(sei: "田中", positions: [.free(.kanji), .free(.kanji)], conditions: [.soukaku: [24]], reading: "はると")
+        XCTAssertEqual(SearchSummary.chips(for: query)[1...2], [
+            .init(text: "姓「田中」", isPrimary: false),
+            .init(text: "読み「はると」", isPrimary: false),
+        ])
+        XCTAssertEqual(ConditionSummary.text(for: query), "2文字・読み「はると」・総格 24")
+    }
+
     func testCandidatesCarryStrokes() throws {
         let search = try NameSearch(
             query: SearchQuery(sei: nil, positions: [.fixed("陽"), .free(.kanji)], conditions: [.chikaku: [13]]),

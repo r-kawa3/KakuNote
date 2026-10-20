@@ -170,6 +170,95 @@ final class SearchTests: XCTestCase {
         XCTAssertTrue(searched.breakdowns.allSatisfy { $0.count > 0 })
     }
 
+    /// 読みの絞り込みは、全部の候補から「読みが割り振れないもの」を飛ばしたのと同じ。数・順番・ページ送りが合う。
+    /// 割り振りは、ここでは素直な総当たり（仕様書 search.md「割り振り」）で確かめる。
+    func testReadingMatchesBruteForce() throws {
+        for (positions, reading, use) in [
+            ([PositionCondition.free(.kanji), .free(.hiragana)], "あいか", [String]()),
+            ([.free(.kanji), .free(.kanji)], "ゆうと", ["優"]),
+            ([.fixed("人"), .free(.kanji)], "ひとびと", []),
+        ] {
+            let conditions: [KakuKind: Set<Int>] = [.chikaku: Set(2...40)]
+            let plain = try NameSearch(
+                query: SearchQuery(sei: nil, positions: positions, conditions: conditions), data: data, school: school
+            )
+            let searched = try NameSearch(
+                query: SearchQuery(sei: nil, positions: positions, conditions: conditions, use: use, reading: reading),
+                data: data, school: school
+            )
+            let target = reading.unicodeScalars.map(\.value)
+            let expected = plain.page(offset: 0, limit: plain.total)
+                .filter { name in
+                    (use.isEmpty || use.contains { name.contains($0) }) && Self.canRead(name, as: target, data: data)
+                }
+                .map(\.codePoints)
+            XCTAssertGreaterThan(expected.count, 0, reading)
+            XCTAssertEqual(searched.total, expected.count, reading)
+            XCTAssertEqual(searched.page(offset: 0, limit: searched.total).map(\.codePoints), expected, reading)
+            XCTAssertEqual(
+                searched.page(offset: expected.count / 2, limit: 3).map(\.codePoints),
+                Array(expected[(expected.count / 2)..<min(expected.count / 2 + 3, expected.count)]), reading
+            )
+            XCTAssertTrue(searched.breakdowns.allSatisfy { $0.count > 0 }, reading)
+        }
+    }
+
+    /// 総当たりの割り振り: 名の各字に、読みの空でない連続した部分を順に割り振れるか。
+    static func canRead(_ name: String, as reading: [UInt32], data: KanjiData) -> Bool {
+        let chars = name.unicodeScalars.map { $0 }
+        func readings(_ i: Int) -> Set<[UInt32]> {
+            var c = chars[i]
+            var j = i
+            while c == "々" {
+                guard j > 0 else { return [] }
+                j -= 1
+                c = chars[j]
+            }
+            let info = data.chars[c]!
+            var own: Set<[UInt32]> = info.script == .kanji
+                ? Set((data.readings[c] ?? []).map { $0.unicodeScalars.map(\.value) })
+                : [[Reading.hiragana(c.value)]]
+            if i > 0 && data.chars[chars[i]]!.script == .kanji {
+                for y in own {
+                    for v in Reading.rendaku[y[0]] ?? [] { own.insert([v] + y.dropFirst()) }
+                }
+            }
+            return own
+        }
+        func go(_ i: Int, _ start: Int) -> Bool {
+            if i == chars.count { return start == reading.count }
+            return readings(i).contains { y in
+                !y.isEmpty && start + y.count <= reading.count
+                    && reading[start..<(start + y.count)].elementsEqual(y) && go(i + 1, start + y.count)
+            }
+        }
+        return go(0, 0)
+    }
+
+    /// 読みがあれば、6 文字でも速く数えられる。
+    func testReadingSixCharsIsFast() throws {
+        let query = SearchQuery(
+            sei: nil, positions: Array(repeating: .free(.any), count: 6), conditions: [.chikaku: [40]],
+            reading: "はるかなそら"
+        )
+        let start = Date()
+        let search = try NameSearch(query: query, data: data, school: school)
+        XCTAssertGreaterThan(search.total, 0)
+        _ = search.page(offset: search.total / 2, limit: 50)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 5)
+    }
+
+    /// 読みの入力: カタカナはひらがなに直し、空なら絞り込まない。ひらがな以外はエラー。
+    func testReadingNormalize() throws {
+        XCTAssertEqual(try Reading.normalize(" ハルト ")?.count, 3)
+        XCTAssertEqual(try Reading.normalize("ハルト"), try Reading.normalize("はると"))
+        XCTAssertNil(try Reading.normalize("  "))
+        XCTAssertEqual(try Reading.normalize("るー"), [0x308B, 0x30FC])
+        XCTAssertThrowsError(try Reading.normalize("haru"))
+        XCTAssertThrowsError(try Reading.normalize("は る"))
+        XCTAssertThrowsError(try Reading.normalize(String(repeating: "あ", count: 31)))
+    }
+
     /// 避けたい字がなかったころに保存した条件（お気に入り）も読める。
     func testQueryWithoutAvoidDecodes() throws {
         let json = #"{"sei":"田中","positions":[{"free":{"_0":"kanji"}}],"conditions":{"chikaku":[2]}}"#
@@ -230,7 +319,8 @@ final class SearchTests: XCTestCase {
         }
         return SearchQuery(
             sei: input["sei"] as? String, positions: positions, conditions: conditions,
-            avoid: input["avoid"] as? [String] ?? [], use: input["use"] as? [String] ?? []
+            avoid: input["avoid"] as? [String] ?? [], use: input["use"] as? [String] ?? [],
+            reading: input["reading"] as? String
         )
     }
 
@@ -239,6 +329,7 @@ final class SearchTests: XCTestCase {
         case .invalidInput, .fixedNotSingleChar: return "invalid_input"
         case .unknownStrokes: return "unknown_stroke"
         case .tooManyResults: return "too_many"
+        case .invalidReading: return "invalid_reading"
         case .invalidLength, .noCondition, .invalidCondition: return "invalid_condition"
         case nil: return "other: \(error)"
         }

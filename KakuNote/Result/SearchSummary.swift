@@ -27,6 +27,9 @@ nonisolated enum SearchSummary {
         if let sei = query.sei {
             chips.append(Chip(text: "姓「\(sei)」", isPrimary: false))
         }
+        if let reading = query.reading?.trimmingCharacters(in: .whitespacesAndNewlines), !reading.isEmpty {
+            chips.append(Chip(text: "読み「\(reading)」", isPrimary: false))
+        }
         chips.append(Chip(text: "\(query.positions.count)文字", isPrimary: false))
         for (index, position) in query.positions.enumerated() {
             let label = "\(index + 1)文字目"

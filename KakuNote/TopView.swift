@@ -22,6 +22,8 @@ struct TopView: View {
     /// 姓ありのときの、ほかの格（人格・地格・外格）の入力
     @State private var otherKakuTexts: [KakuKind: String] = [:]
     @State private var showsOtherKaku = false
+    /// 名前全体の読み（ひらがな）。空なら読みで絞り込まない
+    @State private var readingText = ""
     @State private var query: SearchQuery?
     @State private var formError: String?
     @State private var data: KanjiData?
@@ -32,6 +34,7 @@ struct TopView: View {
     enum Field: Hashable {
         case total
         case kaku(KakuKind)
+        case reading
         case fixed
         case strokes
     }
@@ -56,6 +59,7 @@ struct TopView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     WaHeader(seal: "名", title: "名前を探す")
                     totalCard
+                    readingField
                     if hasSei {
                         otherKakuSection
                     }
@@ -178,6 +182,38 @@ struct TopView: View {
                     .accessibilityIdentifier("search.tenkaku")
             }
         }
+    }
+
+    // MARK: - 読み
+
+    private var readingField: some View {
+        HStack(spacing: 14) {
+            Text("読み")
+                .font(Wa.gothic(.subheadline, weight: .bold))
+                .tracking(1)
+            TextField("", text: Binding(
+                get: { readingText },
+                // カタカナで入れても、ひらがなに直す
+                set: { readingText = Self.hiragana($0) }
+            ), prompt: Text("省略できます（例：はると）").foregroundStyle(Wa.placeholder))
+            .font(Wa.mincho(18))
+            .multilineTextAlignment(.trailing)
+            .focused($focusedField, equals: .reading)
+            .accessibilityLabel("読み")
+            .accessibilityIdentifier("search.reading")
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 52)
+        .waCard()
+    }
+
+    /// カタカナをひらがなに直す（「ー」などはそのまま）。
+    static func hiragana(_ text: String) -> String {
+        var scalars = String.UnicodeScalarView()
+        for scalar in text.unicodeScalars {
+            scalars.append(Unicode.Scalar(Reading.hiragana(scalar.value)) ?? scalar)
+        }
+        return String(scalars)
     }
 
     // MARK: - ほかの格（姓ありのとき）
@@ -345,7 +381,8 @@ struct TopView: View {
         formError = nil
         query = SearchQuery(
             sei: sei, positions: positionConditions, conditions: conditions,
-            avoid: settings.avoidChars, use: settings.useChars
+            avoid: settings.avoidChars, use: settings.useChars,
+            reading: readingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : readingText
         )
     }
 

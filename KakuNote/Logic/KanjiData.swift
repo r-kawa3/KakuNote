@@ -49,6 +49,8 @@ nonisolated struct KanjiData: Sendable {
 
     let chars: [Unicode.Scalar: CharInfo]
     let meta: [String: String]
+    /// 漢字の読み（音・訓・名乗りの kana と stem。ひらがな）。読みでの絞り込みに使う（仕様書 search.md「読み」）
+    var readings: [Unicode.Scalar: Set<String>] = [:]
 
     /// アプリに同梱した DB。最初に使われたときに読み込む。
     static let bundled: Result<KanjiData, KanjiDataError> = {
@@ -91,7 +93,13 @@ nonisolated struct KanjiData: Sendable {
         try database.forEachRow("SELECT key, value FROM meta") { row in
             meta[row.text(0)] = row.text(1)
         }
-        return KanjiData(chars: chars, meta: meta)
+
+        var readings: [Unicode.Scalar: Set<String>] = [:]
+        try database.forEachRow("SELECT char, kana, stem FROM reading") { row in
+            let scalar = try row.scalar(0)
+            readings[scalar, default: []].formUnion([row.text(1), row.text(2)])
+        }
+        return KanjiData(chars: chars, meta: meta, readings: readings)
     }
 
     /// 1 文字（コードポイント 1 つ）の情報。2 つ以上のコードポイントからなる文字列なら nil。

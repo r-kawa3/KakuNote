@@ -599,6 +599,29 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["使いたい字: 乙"].exists)
     }
 
+    /// 「探す」の読みで絞り込むと、その読みになる字の組み合わせだけが出て、チップに出る。カタカナはひらがなに直る。
+    @MainActor
+    func testSearchByReading() throws {
+        let app = launchWithFreshSettings()
+        let reading = app.textFields["search.reading"]
+        XCTAssertTrue(reading.waitForExistence(timeout: 5))
+        reading.tap()
+        reading.typeText("ルー\n")
+        XCTAssertEqual(reading.value as? String, "るー")
+
+        // 2 文字・カタカナ・総画数 3・読み「るー」→ ルー の 1 件
+        for cell in ["search.cell.1", "search.cell.2"] {
+            app.buttons[cell].tap()
+            app.buttons["search.script"].tap()
+            app.buttons["カタカナ"].tap()
+        }
+        search(app, length: 2, total: "3")
+        XCTAssertTrue(app.staticTexts["result.total"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["result.total"].label, "1件")
+        XCTAssertTrue(app.buttons["ルー"].exists)
+        XCTAssertTrue(app.staticTexts["読み「るー」"].exists)
+    }
+
     /// 設定の保存先を一時ファイルにし、空の状態で起動する。
     @MainActor
     private func launchWithFreshSettings() -> XCUIApplication {

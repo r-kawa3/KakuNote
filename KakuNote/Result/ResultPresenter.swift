@@ -81,6 +81,8 @@ class ResultPresenter: ResultPresenterInput, ResultInteractorOutput {
             return "入力に使えない文字（途中の空白など）があります"
         case .tooManyResults:
             return "候補が多すぎます。総画数を絞るか、文字を固定してください"
+        case .invalidReading:
+            return "読みは、ひらがな（またはカタカナ）30 文字までで入れてください"
         case .invalidLength, .noCondition, .invalidCondition:
             return "検索の条件が正しくありません"
         case nil:

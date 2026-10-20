@@ -95,6 +95,9 @@ enum ConditionSummary {
 
     static func text(for query: SearchQuery) -> String {
         var parts = ["\(query.positions.count)文字"]
+        if let reading = query.reading?.trimmingCharacters(in: .whitespacesAndNewlines), !reading.isEmpty {
+            parts.append("読み「\(reading)」")
+        }
         for (index, position) in query.positions.enumerated() {
             if case .fixed(let char) = position {
                 parts.append("\(index + 1)文字目「\(char)」")
