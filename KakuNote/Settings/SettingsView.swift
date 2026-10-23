@@ -68,6 +68,11 @@ struct SettingsView: View {
                         Text("このアプリについて")
                     }
                     .accessibilityIdentifier("settings.about")
+                } footer: {
+                    Text("KakuNote バージョン \(Attribution.appVersion)")
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+                        .accessibilityIdentifier("settings.version")
                 }
                 .waRow()
             }
@@ -133,12 +138,19 @@ private struct CharListSection: View {
                     .onSubmit(add)
                     .accessibilityLabel(title)
                     .accessibilityIdentifier("\(identifier).input")
-                Button("追加", action: add)
-                    .font(Wa.gothic(.subheadline, weight: .bold))
-                    .foregroundStyle(Wa.accent)
-                    .buttonStyle(.borderless)
-                    .disabled(data == nil || input.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .accessibilityIdentifier("\(identifier).add")
+                // 押せることがわかるように、藍の地のボタンにする。何も入れていないときは押せない（iOS が自動で薄くする）
+                let enabled = data != nil && !input.trimmingCharacters(in: .whitespaces).isEmpty
+                Button(action: add) {
+                    Text("追加")
+                        .font(Wa.gothic(.subheadline, weight: .bold))
+                        .foregroundStyle(Wa.onAccent)
+                        .padding(.horizontal, 14)
+                        .frame(minWidth: 64, minHeight: 36)
+                        .background(Wa.accent, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.borderless)
+                .disabled(!enabled)
+                .accessibilityIdentifier("\(identifier).add")
             }
             .frame(minHeight: 44)
             if let message {

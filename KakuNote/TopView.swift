@@ -15,8 +15,8 @@ struct TopView: View {
     @State private var usesSei = true
     @State private var length = 2
     @State private var positions: [PositionInput] = Array(repeating: PositionInput(), count: NameSearch.maxLength)
-    /// 名前の形で選んでいるマス（0 から）
-    @State private var selectedIndex = 0
+    /// 名前の形で選んでいるマス（0 から）。nil なら選んでいない（条件の欄を出さない）
+    @State private var selectedIndex: Int?
     /// 一番上のカードの入力。姓なしなら総画数（地格）、姓ありなら総格
     @State private var totalText = ""
     /// 姓ありのときの、ほかの格（人格・地格・外格）の入力
@@ -25,8 +25,9 @@ struct TopView: View {
     /// 名前全体の読み（ひらがな）。空なら読みで絞り込まない
     @State private var readingText = ""
     @State private var query: SearchQuery?
-    @State private var formError: String?
     @State private var data: KanjiData?
+    /// 姓が未登録のとき、総画数のカードの「姓を設定する」から開く設定画面
+    @State private var showsSettings = false
     /// いま入力している欄（キーボードの上の「,」「完了」に使う）
     @FocusState private var focusedField: Field?
 
@@ -98,7 +99,16 @@ struct TopView: View {
                 ResultRouter.assembleModules(query: query)
             }
             .onChange(of: length) {
-                selectedIndex = min(selectedIndex, length - 1)
+                // 選んでいたマスがなくなったら、選ぶのをやめる
+                if let index = selectedIndex, index >= length { selectedIndex = nil }
+            }
+            .onChange(of: totalText) {
+                // 総画数（総格）は 1 つの値だけ。数字だけ、3 桁まで
+                let digits = String(totalText.filter { $0.isASCII && $0.isNumber }.prefix(3))
+                if digits != totalText { totalText = digits }
+            }
+            .sheet(isPresented: $showsSettings) {
+                SettingsView()
             }
             .task {
                 // 天格の表示に使う。同梱 DB の初回の読み込みはバックグラウンドで行う
@@ -111,19 +121,15 @@ struct TopView: View {
 
     private var totalCard: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(hasSei ? "総格" : "総画数")
-                    .font(Wa.gothic(.footnote, weight: .bold))
-                    .tracking(2)
-                Spacer()
-                Text("複数は「,」で区切ります")
-                    .font(.caption2)
-                    .foregroundStyle(Wa.onAccentFaint)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                TextField("", text: $totalText, prompt: Text("20").foregroundStyle(Wa.onAccent.opacity(0.4)))
+            Text(hasSei ? "総格" : "総画数")
+                .font(Wa.gothic(.footnote, weight: .bold))
+                .tracking(2)
+            // 値は 1 つだけ。数字はカードの真ん中、「画」は右の端
+            ZStack(alignment: .trailing) {
+                TextField("", text: $totalText, prompt: Text("20").foregroundStyle(Wa.onAccent.opacity(0.25)))
                     .font(Wa.mincho(64, bold: true, relativeTo: .largeTitle))
-                    // 数字専用のキーボード（かな変換を通らない）。区切りはキーボードの上の「,」で入れる
+                    .multilineTextAlignment(.center)
+                    // 数字専用のキーボード（かな変換を通らない）
                     .keyboardType(.numberPad)
                     .focused($focusedField, equals: .total)
                     .tint(Wa.onAccent)
@@ -132,6 +138,8 @@ struct TopView: View {
                 Text("画")
                     .font(Wa.mincho(24))
                     .foregroundStyle(Wa.onAccentFaint)
+                    .padding(.top, 24)
+                    .accessibilityHidden(true)
             }
             .padding(.bottom, 4)
             .overlay(alignment: .bottom) {
@@ -140,11 +148,34 @@ struct TopView: View {
             if let registered = settings.registeredSei {
                 seiRow(registered)
                     .padding(.top, 6)
+            } else {
+                seiPrompt
+                    .padding(.top, 6)
             }
         }
         .foregroundStyle(Wa.onAccent)
         .padding(EdgeInsets(top: 16, leading: 22, bottom: 14, trailing: 22))
         .background(Wa.accent, in: RoundedRectangle(cornerRadius: Wa.Metrics.largeCornerRadius))
+    }
+
+    /// 姓が未登録のときの行: 姓を登録すると総格で探せることと、設定画面を開くボタン。
+    private var seiPrompt: some View {
+        HStack(spacing: 8) {
+            Text("姓を登録すると、総格で探せます")
+                .font(.footnote)
+                .foregroundStyle(Wa.onAccentFaint)
+            Spacer(minLength: 4)
+            Button {
+                showsSettings = true
+            } label: {
+                Text("姓を設定する ›")
+                    .font(Wa.gothic(.footnote, weight: .bold))
+                    .foregroundStyle(Wa.onAccent)
+                    .frame(minHeight: Wa.Metrics.minTapSize)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("search.setSei")
+        }
     }
 
     /// 登録した姓の行: 「姓「田中」・天格 9画」と「姓を使う」。
@@ -285,25 +316,35 @@ struct TopView: View {
                 HStack(spacing: 12) {
                     ForEach(0..<length, id: \.self) { index in
                         NameCell(input: positions[index], index: index, isSelected: index == selectedIndex) {
-                            selectedIndex = index
+                            // 選んでいるマスをもう一度押すと閉じる
+                            selectedIndex = selectedIndex == index ? nil : index
                         }
                     }
                 }
                 .padding(2)
             }
-            KindTabs(kind: $positions[selectedIndex].kind)
-            PositionDetail(input: $positions[selectedIndex], focusedField: $focusedField)
+            // マスを選んだときだけ、そのマスの条件（自由／画数指定／固定）の欄を出す
+            if let selectedIndex {
+                KindTabs(kind: $positions[selectedIndex].kind)
+                PositionDetail(input: $positions[selectedIndex], focusedField: $focusedField)
+            } else {
+                Text("マスを押すと、その文字の条件を選べます")
+                    .font(.caption)
+                    .foregroundStyle(Wa.secondaryText)
+            }
         }
     }
 
     // MARK: - 「この条件で探す」
 
     private var submitBar: some View {
-        VStack(spacing: 6) {
-            if let formError {
-                Text(formError)
+        let problem = validated.problem
+        return VStack(spacing: 6) {
+            // 押せないときは、その理由（足りない入力など）をボタンの上に出す
+            if let problem {
+                Text(problem)
                     .font(.footnote)
-                    .foregroundStyle(Wa.seal)
+                    .foregroundStyle(Wa.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("search.formError")
             }
@@ -319,6 +360,8 @@ struct TopView: View {
                 .background(Wa.accent, in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
+            // 押せないときは、iOS が自動でボタンを薄くする
+            .disabled(problem != nil)
             .accessibilityIdentifier("search.submit")
         }
         .padding(.horizontal, Wa.Metrics.screenPadding)
@@ -327,12 +370,10 @@ struct TopView: View {
         .background(Wa.background)
     }
 
-    /// いまの欄が、複数の値（「,」区切り）を受け付けるか
+    /// いまの欄が、複数の値（「,」区切り）を受け付けるか（ほかの格だけ。総画数・総格は 1 つの値）
     private var acceptsSeparator: Bool {
-        switch focusedField {
-        case .total, .kaku: return true
-        default: return false
-        }
+        if case .kaku = focusedField { return true }
+        return false
     }
 
     /// いまの欄の末尾に区切りの「,」を足す（空のとき・すでに区切りで終わるときは足さない）
@@ -343,8 +384,6 @@ struct TopView: View {
             return trimmed + ","
         }
         switch focusedField {
-        case .total:
-            totalText = appended(totalText)
         case .kaku(let kind):
             otherKakuTexts[kind] = appended(otherKakuTexts[kind] ?? "")
         default:
@@ -352,39 +391,25 @@ struct TopView: View {
         }
     }
 
+    /// いまの入力を確かめた結果。押す前に「この条件で探す」を押せるかを決める
+    private var validated: SearchInputCheck {
+        SearchInputCheck.make(
+            sei: sei,
+            totalText: totalText,
+            otherKakuTexts: otherKakuTexts,
+            positions: Array(positions.prefix(length)),
+            reading: readingText,
+            avoid: settings.avoidChars,
+            use: settings.useChars,
+            readingPrefix: settings.readingPrefix,
+            data: data
+        )
+    }
+
     private func submit() {
         focusedField = nil
-        var conditions: [KakuKind: Set<Int>] = [:]
-        let totals = Self.parseNumbers(totalText)
-        if !totals.isEmpty {
-            conditions[hasSei ? .soukaku : .chikaku] = Set(totals)
-        }
-        if hasSei {
-            for item in Self.otherKakuKinds {
-                let values = Self.parseNumbers(otherKakuTexts[item.kind] ?? "")
-                if !values.isEmpty { conditions[item.kind] = Set(values) }
-            }
-        }
-        guard !conditions.isEmpty else {
-            formError = hasSei ? "総格か、ほかの格の画数を入力してください" : "総画数を入力してください"
-            return
-        }
-        var positionConditions: [PositionCondition] = []
-        for index in 0..<length {
-            guard let condition = positions[index].condition else {
-                selectedIndex = index
-                formError = "\(index + 1)文字目の条件を入力してください"
-                return
-            }
-            positionConditions.append(condition)
-        }
-        formError = nil
-        query = SearchQuery(
-            sei: sei, positions: positionConditions, conditions: conditions,
-            avoid: settings.avoidChars, use: settings.useChars,
-            reading: readingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : readingText,
-            readingPrefix: settings.readingPrefix
-        )
+        guard case .ready(let ready) = validated else { return }
+        query = ready
     }
 
     /// 「24, 31」「24、31」「24 31」のような入力から、正の整数を取り出す。

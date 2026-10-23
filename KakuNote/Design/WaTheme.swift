@@ -28,8 +28,8 @@ enum Wa {
         static let ink: UInt32 = 0x2A2723
         /// 補足の文字
         static let secondaryText: UInt32 = 0x6B6455
-        /// 入力欄の例文
-        static let placeholder: UInt32 = 0x7A7260
+        /// 入力欄の例文。入力した文字と見間違えないように、薄くしている
+        static let placeholder: UInt32 = 0xB3AA96
         /// 点線の枠（未入力のマス）
         static let dashed: UInt32 = 0xA89C82
         /// アクセント（藍）

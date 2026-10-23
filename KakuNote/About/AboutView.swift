@@ -12,6 +12,14 @@ struct AboutView: View {
     var body: some View {
         List {
             Group {
+                Section("KakuNote") {
+                    HStack {
+                        Text("アプリのバージョン")
+                        Spacer()
+                        Text(Attribution.appVersion)
+                            .accessibilityIdentifier("about.app.version")
+                    }
+                }
                 ForEach(sources, id: \.name) { source in
                     Section(source.name) {
                         Text(source.description)

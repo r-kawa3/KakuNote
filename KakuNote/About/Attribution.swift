@@ -47,6 +47,11 @@ nonisolated enum Attribution {
 
     private static let unknown = "不明"
 
+    /// アプリのバージョン（例: 1.0.0。プロジェクトの MARKETING_VERSION）
+    static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? unknown
+    }
+
     private static func link(_ title: String, _ url: String) -> Link {
         Link(title: title, url: URL(string: url)!)
     }

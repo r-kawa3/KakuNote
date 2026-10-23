@@ -20,12 +20,17 @@ final class WaThemeTests: XCTestCase {
             ("藍の上の文字 / 藍", Wa.Hex.onAccent, Wa.Hex.accent, 4.5),
             ("藍 / 生成り", Wa.Hex.accent, Wa.Hex.background, 4.5),
             ("朱の上の文字 / 朱", Wa.Hex.onAccent, Wa.Hex.seal, 4.5),
-            // 入力欄の例文は大きめの文字なので 3:1 でよい
-            ("例文 / カードの面", Wa.Hex.placeholder, Wa.Hex.surface, 3.0),
         ]
         for (name, text, background, minimum) in pairs {
             XCTAssertGreaterThanOrEqual(Self.contrast(text, background), minimum, name)
         }
+    }
+
+    /// 入力欄の例文は、読めるが、入力した文字と見間違えない薄さ（明るさの差が 2〜3 の間）。
+    func testPlaceholderIsLightButReadable() {
+        let ratio = Self.contrast(Wa.Hex.placeholder, Wa.Hex.surface)
+        XCTAssertTrue((2.0...3.0).contains(ratio), "例文 / カードの面: \(ratio)")
+        XCTAssertGreaterThan(Self.contrast(Wa.Hex.ink, Wa.Hex.surface), ratio * 4)
     }
 
     /// 明朝体（ヒラギノ明朝）は iOS に入っているので、アプリに入れなくても使える。

@@ -89,13 +89,16 @@ final class KakuNoteUITests: XCTestCase {
     func testNameShapeCellsFixAChar() throws {
         let app = launchWithFreshSettings()
 
-        // 最初は 2 文字で、1 文字目のマスが選ばれている
+        // 最初は 2 文字で、どのマスも選ばれておらず、条件の欄は出ていない
         let cell1 = app.buttons["search.cell.1"]
         XCTAssertTrue(cell1.waitForExistence(timeout: 5))
-        XCTAssertEqual(cell1.value as? String, "選択中")
+        XCTAssertNotEqual(cell1.value as? String, "選択中")
         XCTAssertEqual(cell1.label, "1文字目 自由")
+        XCTAssertFalse(app.buttons["search.kind.fixed"].exists)
 
-        // 1 文字目を「陽」に固定する
+        // 1 文字目のマスを押すと条件の欄が出る。「陽」に固定する
+        cell1.tap()
+        XCTAssertEqual(cell1.value as? String, "選択中")
         app.buttons["search.kind.fixed"].tap()
         let fixed = app.textFields["search.fixed"]
         XCTAssertTrue(fixed.waitForExistence(timeout: 5))
@@ -107,6 +110,9 @@ final class KakuNoteUITests: XCTestCase {
         app.buttons["search.cell.2"].tap()
         XCTAssertEqual(app.buttons["search.cell.2"].value as? String, "選択中")
         XCTAssertFalse(app.textFields["search.fixed"].exists)
+        // 選んでいるマスをもう一度押すと閉じる
+        app.buttons["search.cell.2"].tap()
+        XCTAssertFalse(app.buttons["search.kind.fixed"].exists)
 
         // 陽（12 画）+ 1 画の漢字（一・乙）= 総画数 13
         search(app, length: 2, total: "13")
@@ -116,39 +122,55 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(app.buttons["陽乙"].exists)
     }
 
-    /// 数字の欄は数字専用のキーボードで、キーボードの上の「,」で区切りを入れ、「完了」で閉じられる。
+    /// 総画数の欄は数字専用のキーボードで、値は 1 つだけ（区切りの「,」は出さない）。「完了」で閉じられる。
     @MainActor
-    func testNumberFieldsUseSeparatorAndDone() throws {
+    func testTotalFieldTakesOneNumber() throws {
         let app = launchWithFreshSettings()
 
         let total = app.textFields["search.total"]
         XCTAssertTrue(total.waitForExistence(timeout: 5))
         total.tap()
         total.typeText("24")
-        let comma = app.buttons["keyboard.comma"]
-        XCTAssertTrue(comma.waitForExistence(timeout: 5))
-        comma.tap()
-        // 区切りで終わっているときは、もう一度押しても重ならない
-        comma.tap()
-        total.typeText("31")
-        XCTAssertEqual(total.value as? String, "24,31")
+        XCTAssertTrue(app.buttons["keyboard.done"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["keyboard.comma"].exists)
+        XCTAssertEqual(total.value as? String, "24")
 
         // 「完了」でキーボードが閉じ、「この条件で探す」が押せる
         app.buttons["keyboard.done"].tap()
         XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 1))
         let submit = app.buttons["search.submit"]
         XCTAssertTrue(submit.isHittable)
+        XCTAssertTrue(submit.isEnabled)
         submit.tap()
+        XCTAssertTrue(app.staticTexts["総画数 24画"].waitForExistence(timeout: 10))
+    }
 
-        // 2 つの値で検索された
-        let chip = app.staticTexts["総画数 24・31画"]
-        XCTAssertTrue(chip.waitForExistence(timeout: 10))
+    /// ほかの格（人格・地格・外格）の欄は、区切りの「,」で複数の値を入れられる。
+    @MainActor
+    func testOtherKakuFieldsUseSeparator() throws {
+        let app = launchWithFreshSettings()
+        registerSei(app, "田中")
+        openOtherKaku(app)
+        let jinkaku = app.textFields["search.kaku.jinkaku"]
+        jinkaku.tap()
+        jinkaku.typeText("15")
+        let comma = app.buttons["keyboard.comma"]
+        XCTAssertTrue(comma.waitForExistence(timeout: 5))
+        comma.tap()
+        // 区切りで終わっているときは、もう一度押しても重ならない
+        comma.tap()
+        jinkaku.typeText("16")
+        XCTAssertEqual(jinkaku.value as? String, "15,16")
+        app.buttons["keyboard.done"].tap()
     }
 
     /// 画数指定の欄は区切りの「,」を出さない（1 つの値だけ）。
     @MainActor
     func testStrokesFieldHasNoSeparator() throws {
         let app = launchWithFreshSettings()
+        let cell1 = app.buttons["search.cell.1"]
+        XCTAssertTrue(cell1.waitForExistence(timeout: 5))
+        cell1.tap()
         let kind = app.buttons["search.kind.strokes"]
         XCTAssertTrue(kind.waitForExistence(timeout: 5))
         kind.tap()
@@ -184,9 +206,50 @@ final class KakuNoteUITests: XCTestCase {
         XCTAssertTrue(submit.isHittable)
         setLength(app, 6)
         XCTAssertTrue(submit.isHittable)
-        // 総画数が空なら、その旨が出る
-        submit.tap()
+        // 総画数が空なら押せず、その旨が出る。入れると押せる
+        XCTAssertFalse(submit.isEnabled)
         XCTAssertEqual(app.staticTexts["search.formError"].label, "総画数を入力してください")
+        type(app, "6", into: "search.total")
+        XCTAssertTrue(submit.isEnabled)
+        XCTAssertFalse(app.staticTexts["search.formError"].exists)
+    }
+
+    /// 探す前にわかる誤り（固定の字が 2 文字、読みにひらがな以外）があると押せず、理由が出る。
+    @MainActor
+    func testSubmitDisabledWithReason() throws {
+        let app = launchWithFreshSettings()
+        type(app, "16", into: "search.total")
+        let submit = app.buttons["search.submit"]
+        XCTAssertTrue(submit.isEnabled)
+
+        app.buttons["search.cell.1"].tap()
+        app.buttons["search.kind.fixed"].tap()
+        let fixed = app.textFields["search.fixed"]
+        XCTAssertTrue(fixed.waitForExistence(timeout: 5))
+        XCTAssertFalse(submit.isEnabled)
+        XCTAssertEqual(app.staticTexts["search.formError"].label, "1文字目の条件を入力してください")
+        fixed.tap()
+        fixed.typeText("陽菜\n")
+        XCTAssertEqual(app.staticTexts["search.formError"].label, "1文字目に固定する字は 1 文字にしてください")
+        XCTAssertFalse(submit.isEnabled)
+    }
+
+    /// 姓が未登録のときは、総画数のカードの「姓を設定する」から設定画面を開ける。
+    @MainActor
+    func testSetSeiFromTotalCard() throws {
+        let app = launchWithFreshSettings()
+        let setSei = app.buttons["search.setSei"]
+        XCTAssertTrue(setSei.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["姓を登録すると、総格で探せます"].exists)
+        setSei.tap()
+        let field = app.textFields["settings.sei"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("田中")
+        app.buttons["settings.close"].tap()
+        XCTAssertTrue(app.staticTexts["search.tenkaku"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["search.setSei"].exists)
+        XCTAssertEqual(app.textFields["search.total"].label, "総格")
     }
 
     /// 件数の多い検索でも先頭が出て、スクロールすると続き（51 件目以降）が出る。
@@ -413,6 +476,7 @@ final class KakuNoteUITests: XCTestCase {
             app.buttons["settings.about"].tap()
 
             XCTAssertTrue(app.staticTexts["about.KANJIDIC2.version"].waitForExistence(timeout: 5), tab)
+            XCTAssertEqual(app.staticTexts["about.app.version"].label, "1.0.0")
             XCTAssertEqual(app.staticTexts["about.KANJIDIC2.version"].label, "2026-291")
             XCTAssertFalse(app.staticTexts["about.Unihan.version"].exists)
             XCTAssertTrue(app.descendants(matching: .any)["CC BY-SA 4.0"].exists)
@@ -528,9 +592,12 @@ final class KakuNoteUITests: XCTestCase {
         app.buttons["settings.open"].tap()
         let input = app.textFields["settings.avoid.input"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
+        // 何も入れていないときは「追加」を押せない
+        XCTAssertFalse(app.buttons["settings.avoid.add"].isEnabled)
         // 登録できない字は知らせて、登録しない
         input.tap()
         input.typeText("A")
+        XCTAssertTrue(app.buttons["settings.avoid.add"].isEnabled)
         app.buttons["settings.avoid.add"].tap()
         XCTAssertTrue(app.staticTexts["settings.avoid.error"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["settings.avoid.remove.A"].exists)
